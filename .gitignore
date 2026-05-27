@@ -5,5 +5,5 @@ dist
 *.log
 .DS_Store
 public/audio/*.mp3
-public/audio/*.mp4
-public/audio/*.mov
+public/*.mp4
+public/*.mov
