@@ -4,6 +4,6 @@ dist
 .env.local
 *.log
 .DS_Store
-.mp3
-.mov
-.mp4
+public/audio/*.mp3
+public/audio/*.mp4
+public/audio/*.mov
