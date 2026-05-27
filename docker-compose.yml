@@ -1,0 +1,45 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_MEDIA_BASE_URL: ${VITE_MEDIA_BASE_URL:-}
+        VITE_BACKGROUND_IMAGE_URL: ${VITE_BACKGROUND_IMAGE_URL:-}
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  # Optional: MinIO stand-in for S3 while developing uploads and URLs.
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-localkey}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-localsecret}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    profiles:
+      - s3-local
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-localkey} $${MINIO_ROOT_PASSWORD:-localsecret};
+      mc mb -p local/$${MEDIA_BUCKET:-media} || true;
+      mc anonymous set download local/$${MEDIA_BUCKET:-media} || true;
+      exit 0;
+      "
+    profiles:
+      - s3-local
+
+volumes:
+  minio_data:

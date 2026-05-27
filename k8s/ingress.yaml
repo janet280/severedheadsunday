@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: severed-head-sunday-web
+  namespace: severed-head-sunday
+  annotations:
+    # Add TLS / scheme / target-type annotations for AWS Load Balancer Controller as needed.
+spec:
+  ingressClassName: alb
+  rules:
+    - host: severedheadsunday.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: severed-head-sunday-web
+                port:
+                  number: 80

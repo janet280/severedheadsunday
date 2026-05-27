@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: severed-head-sunday-web
+  namespace: severed-head-sunday
+  labels:
+    app.kubernetes.io/name: severed-head-sunday-web
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: severed-head-sunday-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
