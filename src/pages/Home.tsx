@@ -1,6 +1,13 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { AudioVisualizer } from "../components/AudioVisualizer";
 import { BandBio } from "../content/BandBio";
+import { resumeAudioGraph } from "../audioGraph";
+import {
+  refreshWakeLockIfPlaying,
+  releaseScreenWakeLock,
+  requestScreenWakeLock,
+  resumePlayback,
+} from "../audioKeepAlive";
 import {
   TRACKS,
   TRACK_SECTION_HEADING,
@@ -13,6 +20,7 @@ const GRAIN_TEXTURE =
 
 export function Home() {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const resumeAfterHideRef = useRef(false);
   const currentIndexRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [vizReady, setVizReady] = useState(false);
@@ -37,12 +45,48 @@ export function Home() {
       setLoadError(null);
       setVizReady(true);
       audio.load();
-      void audio.play().catch(() => {
-        /* autoplay policies — user gesture via playlist works */
-      });
+      void audio
+        .play()
+        .then(() => requestScreenWakeLock())
+        .catch(() => {
+          /* autoplay policies — user gesture via playlist works */
+        });
     },
     [],
   );
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+      void resumePlayback(audio, resumeAfterHideRef.current);
+      void refreshWakeLockIfPlaying(audio);
+    };
+
+    const onWindowFocus = () => {
+      void resumePlayback(audio, resumeAfterHideRef.current);
+      void refreshWakeLockIfPlaying(audio);
+    };
+
+    const onPageHide = () => {
+      void releaseScreenWakeLock();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", onWindowFocus);
+    window.addEventListener("pagehide", onPageHide);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", onWindowFocus);
+      window.removeEventListener("pagehide", onPageHide);
+      void releaseScreenWakeLock();
+    };
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -102,6 +146,17 @@ export function Home() {
                 );
               }}
               onLoadedData={() => setLoadError(null)}
+              onPlay={() => {
+                resumeAfterHideRef.current = true;
+                void resumeAudioGraph(audioRef.current!);
+                void requestScreenWakeLock();
+              }}
+              onPause={() => {
+                if (!document.hidden) {
+                  resumeAfterHideRef.current = false;
+                  void releaseScreenWakeLock();
+                }
+              }}
             />
           </div>
         </div>

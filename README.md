@@ -51,6 +51,18 @@ Browsers require CORS on the bucket for cross-origin audio + Web Audio; configur
 - **HTML/JS/CSS**: after `npm run build`, use `scripts/sync-static-to-s3.sh` to publish `dist/` (long-cache hashed assets, short-cache `index.html`).
 - **Audio / images**: use `scripts/sync-media-to-s3.sh` for bulk uploads to a media bucket; point `VITE_MEDIA_BASE_URL` and `VITE_BACKGROUND_IMAGE_URL` at that bucket or CloudFront.
 
+## Minikube (local Kubernetes practice)
+
+See **[k8s/minikube/README.md](k8s/minikube/README.md)** for a full walkthrough. Quick start:
+
+```bash
+minikube start --cpus=2 --memory=4096
+./scripts/minikube-deploy.sh
+kubectl -n severed-head-sunday port-forward svc/severed-head-sunday-web 8080:80
+```
+
+Uses `k8s/minikube/` manifests (local image, NGINX Ingress optional). Production EKS manifests in `k8s/` are unchanged.
+
 ## Amazon EKS
 
 1. Build and push the image (replace registry/repo/tag):
