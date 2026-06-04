@@ -1,76 +1,80 @@
-name: Deploy to k3s (EC2)
+# .github/workflows/deploy.yml
+name: Build and Deploy to K3s
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
+    branches:
+      - main # Triggers the pipeline when pushing code to the main branch
 
 env:
-  IMAGE_NAME: severed-head-sunday-web
-  # EC2 instances are usually amd64; use linux/arm64 for Graviton.
-  BUILD_PLATFORM: linux/amd64
+  REGISTRY: ghcr.io
+  # Converts repository name to lowercase to comply with Docker image naming standard rules
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Checkout
+      # 1. Pull code out of GitHub repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set image coordinates
-        run: |
-          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          echo "IMAGE=ghcr.io/${owner}/${IMAGE_NAME}" >> "$GITHUB_ENV"
-          echo "TAG=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+      # 2. Set up QEMU for ARM64 compiling (Crucial for t4g.small stability)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
-      - name: Log in to GHCR
+      # 3. Set up Docker Buildx engine
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 4. Log into GitHub Container Registry to save images safely
+      - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
-        env:
-          VITE_MEDIA_BASE_URL: ${{ secrets.VITE_MEDIA_BASE_URL }}
-          VITE_BACKGROUND_IMAGE_URL: ${{ secrets.VITE_BACKGROUND_IMAGE_URL }}
-        run: |
-          PLATFORMS="${BUILD_PLATFORM}" \
-            PUSH=1 \
-            IMAGE="${IMAGE}:${TAG}" \
-            VITE_MEDIA_BASE_URL="${VITE_MEDIA_BASE_URL}" \
-            VITE_BACKGROUND_IMAGE_URL="${VITE_BACKGROUND_IMAGE_URL}" \
-            ./scripts/docker-build.sh
+      # 5. Extract metadata labels (tags, commits) for the container image
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            docker buildx imagetools create -t "${IMAGE}:latest" "${IMAGE}:${TAG}"
-          fi
+      # 6. Build and Push the ARM64 image to GHCR
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64 # Compiles directly into ARM64 bytecode
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.K3S_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.K3S_HOST }}" >> ~/.ssh/known_hosts
+      # 7. Authenticate inside GitHub Actions runner via our Kubeconfig secret
+      - name: Setup Kubectl Context
+        uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_DATA }}
 
-      - name: Deploy to k3s over SSH
-        env:
-          K3S_HOST: ${{ secrets.K3S_HOST }}
-          K3S_SSH_USER: ${{ secrets.K3S_SSH_USER }}
+      # 8. Deploy / Apply fresh configuration manifests into the K3s Node
+      - name: Deploy to K3s Cluster
         run: |
-          DEPLOY_DIR="/tmp/severed-head-sunday-deploy-${TAG}"
-          tar czf deploy.tgz k8s scripts/k3s-apply.sh
-          scp deploy.tgz "${K3S_SSH_USER}@${K3S_HOST}:/tmp/severed-head-sunday-deploy.tgz"
-          ssh "${K3S_SSH_USER}@${K3S_HOST}" bash -s <<EOF
-          set -euo pipefail
-          rm -rf "${DEPLOY_DIR}"
-          mkdir -p "${DEPLOY_DIR}"
-          tar xzf /tmp/severed-head-sunday-deploy.tgz -C "${DEPLOY_DIR}"
-          chmod +x "${DEPLOY_DIR}/scripts/k3s-apply.sh"
-          IMAGE="${IMAGE}:${TAG}" "${DEPLOY_DIR}/scripts/k3s-apply.sh"
-          rm -rf "${DEPLOY_DIR}" /tmp/severed-head-sunday-deploy.tgz
-          EOF
+          # Inject the absolute explicit commit-hash tag into deployment file
+          sed -i "s|image: ghcr.io/.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}|g" k8s/deployment.yaml
+          
+          kubectl apply -f k8s/deployment.yaml
+          
+          # Force cluster to wait until rollout verifies app is safely online
+          kubectl rollout status deployment/vite-audio-app --timeout=120s
