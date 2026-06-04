@@ -27,6 +27,8 @@ docker compose build --no-cache
 docker compose up
 ```
 
+Images use multi-arch base tags (`node:22-alpine`, `nginxinc/nginx-unprivileged`). On Apple Silicon and other **arm64** hosts, Compose builds a native **linux/arm64** image automatically. The Dockerfile uses BuildKit `BUILDPLATFORM` / `TARGETPLATFORM` so the same file supports cross-platform builds via `./scripts/docker-build.sh` (see EKS below).
+
 Open `http://localhost:8080`.
 
 Build-time variables for the SPA are Docker `build.args` in `docker-compose.yml` (same names as `VITE_*`). Either export them in your shell or copy `.env.example` to `.env` (Compose reads `.env` automatically).
@@ -68,11 +70,26 @@ Uses `k8s/minikube/` manifests (local image, NGINX Ingress optional). Production
 1. Build and push the image (replace registry/repo/tag):
 
    ```bash
-   docker build -t $REGISTRY/severed-head-sunday-web:v1 \
-     --build-arg VITE_MEDIA_BASE_URL="$VITE_MEDIA_BASE_URL" \
-     --build-arg VITE_BACKGROUND_IMAGE_URL="$VITE_BACKGROUND_IMAGE_URL" \
-     .
+   # Native arch (e.g. arm64 laptop → arm64 EKS nodes)
+   IMAGE=$REGISTRY/severed-head-sunday-web:v1 \
+     VITE_MEDIA_BASE_URL="$VITE_MEDIA_BASE_URL" \
+     VITE_BACKGROUND_IMAGE_URL="$VITE_BACKGROUND_IMAGE_URL" \
+     ./scripts/docker-build.sh
    docker push $REGISTRY/severed-head-sunday-web:v1
+
+   # Explicit arm64 (from any host with buildx + QEMU)
+   PLATFORMS=linux/arm64 IMAGE=$REGISTRY/severed-head-sunday-web:v1 \
+     VITE_MEDIA_BASE_URL="$VITE_MEDIA_BASE_URL" \
+     VITE_BACKGROUND_IMAGE_URL="$VITE_BACKGROUND_IMAGE_URL" \
+     ./scripts/docker-build.sh
+   docker push $REGISTRY/severed-head-sunday-web:v1
+
+   # Multi-arch manifest (amd64 + arm64 node pools)
+   PLATFORMS=linux/amd64,linux/arm64 PUSH=1 \
+     IMAGE=$REGISTRY/severed-head-sunday-web:v1 \
+     VITE_MEDIA_BASE_URL="$VITE_MEDIA_BASE_URL" \
+     VITE_BACKGROUND_IMAGE_URL="$VITE_BACKGROUND_IMAGE_URL" \
+     ./scripts/docker-build.sh
    ```
 
 2. Edit `k8s/deployment.yaml` — set `image:` to your pushed URI.
@@ -87,6 +104,12 @@ Uses `k8s/minikube/` manifests (local image, NGINX Ingress optional). Production
    ```
 
 Tune probes, resources, TLS, and Ingress controller annotations for your environment.
+
+## k3s on EC2 (GitHub Actions)
+
+For a single-node **k3s** cluster on EC2, use the workflow in `.github/workflows/deploy-k3s.yml`. It builds the image, pushes to **GHCR**, and deploys over **SSH** (no public Kubernetes API required).
+
+See **[k8s/k3s/README.md](k8s/k3s/README.md)** for EC2 bootstrap, GitHub secrets (`K3S_HOST`, `K3S_SSH_USER`, `K3S_SSH_PRIVATE_KEY`), and TLS with Traefik.
 
 ## Notes
 
