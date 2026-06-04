@@ -25,3 +25,13 @@ export function getOrCreateAudioGraph(audio: HTMLAudioElement): AudioGraph {
   graphs.set(audio, graph);
   return graph;
 }
+
+export async function resumeAudioGraph(
+  audio: HTMLAudioElement,
+): Promise<void> {
+  const graph = graphs.get(audio);
+  if (!graph) return;
+  if (graph.audioCtx.state === "suspended") {
+    await graph.audioCtx.resume();
+  }
+}

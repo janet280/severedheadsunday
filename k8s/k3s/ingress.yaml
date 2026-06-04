@@ -1,12 +1,18 @@
+# k3s ships Traefik as the default Ingress controller.
+# TLS: install cert-manager + a ClusterIssuer, then uncomment the cert-manager annotation.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: severed-head-sunday-web
   namespace: severed-head-sunday
   annotations:
-    # Add TLS / scheme / target-type annotations for AWS Load Balancer Controller as needed.
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: alb
+  ingressClassName: traefik
+  # tls:
+  #   - hosts:
+  #       - severedheadsunday.band
+  #     secretName: severedheadsunday-tls
   rules:
     - host: severedheadsunday.band
       http:

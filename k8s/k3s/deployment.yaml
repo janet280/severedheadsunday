@@ -1,3 +1,4 @@
+# k3s on EC2: image tag is set by CI (see scripts/k3s-apply.sh).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: severed-head-sunday-web
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: severed-head-sunday-web
@@ -15,13 +16,16 @@ spec:
       labels:
         app.kubernetes.io/name: severed-head-sunday-web
     spec:
+      # Omit imagePullSecrets when the GHCR package is public.
+      # imagePullSecrets:
+      #   - name: ghcr-regcred
       securityContext:
         runAsNonRoot: true
         runAsUser: 101
         fsGroup: 101
       containers:
         - name: nginx
-          image: severed-head-sunday-web:v1
+          image: __IMAGE__
           imagePullPolicy: Always
           ports:
             - name: http

@@ -1,3 +1,4 @@
+# Minikube: build image inside minikube's Docker (see k8s/minikube/README.md).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: severed-head-sunday-web
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: severed-head-sunday-web
@@ -21,8 +22,8 @@ spec:
         fsGroup: 101
       containers:
         - name: nginx
-          image: severed-head-sunday-web:v1
-          imagePullPolicy: Always
+          image: severed-head-sunday-web:local
+          imagePullPolicy: Never
           ports:
             - name: http
               containerPort: 8080
@@ -44,5 +45,5 @@ spec:
               cpu: 25m
               memory: 64Mi
             limits:
-              cpu: 250m
-              memory: 128Mi
+              cpu: 500m
+              memory: 256Mi
