@@ -1,80 +1,31 @@
-# .github/workflows/deploy.yml
 name: Build and Deploy to K3s
 
 on:
   push:
     branches:
-      - main # Triggers the pipeline when pushing code to the main branch
-
-env:
-  REGISTRY: ghcr.io
-  # Converts repository name to lowercase to comply with Docker image naming standard rules
-  IMAGE_NAME: ${{ github.repository }}
+      - main
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    # ---> CRUCIAL: Directs the job to execute natively on your EC2 instance! <---
+    runs-on: self-hosted
 
     steps:
-      # 1. Pull code out of GitHub repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Set up QEMU for ARM64 compiling (Crucial for t4g.small stability)
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      # 3. Set up Docker Buildx engine
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # 4. Log into GitHub Container Registry to save images safely
-      - name: Log into registry ${{ env.REGISTRY }}
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 5. Extract metadata labels (tags, commits) for the container image
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
-      # 6. Build and Push the ARM64 image to GHCR
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/arm64 # Compiles directly into ARM64 bytecode
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # 7. Authenticate inside GitHub Actions runner via our Kubeconfig secret
-      - name: Setup Kubectl Context
-        uses: azure/k8s-set-context@v4
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBECONFIG_DATA }}
-
-      # 8. Deploy / Apply fresh configuration manifests into the K3s Node
-      - name: Deploy to K3s Cluster
+      # 1. Build the Docker image natively (lightning fast on an actual ARM chip)
+      - name: Build Docker Image
         run: |
-          # Inject the absolute explicit commit-hash tag into deployment file
-          sed -i "s|image: ghcr.io/.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ github.sha }}|g" k8s/deployment.yaml
+          docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} .
+          docker tag ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:latest
+
+      # 2. Deploy straight to the local cluster 
+      - name: Deploy Manifests locally
+        run: |
+          # Inject the new image tag directly into your deployment file
+          sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" k8s/deployment.yaml
           
+          # Since the runner is inside the machine, it can talk directly to K3s over localhost!
           kubectl apply -f k8s/deployment.yaml
-          
-          # Force cluster to wait until rollout verifies app is safely online
           kubectl rollout status deployment/vite-audio-app --timeout=120s
