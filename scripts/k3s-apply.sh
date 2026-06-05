@@ -8,7 +8,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 IMAGE="${IMAGE:?Set IMAGE to the full registry URI including tag}"
-export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
+
+if [[ -z "${KUBECONFIG:-}" ]]; then
+  if [[ -f "${HOME}/.kube/config" ]]; then
+    export KUBECONFIG="${HOME}/.kube/config"
+  else
+    export KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+  fi
+fi
 
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/service.yaml

@@ -1,6 +1,9 @@
 # k3s on a single EC2 instance
 
-Deploys use **GitHub Actions** (`.github/workflows/deploy-k3s.yml`): build → push to GHCR → SSH to the EC2 node → `kubectl apply`.
+Deploys use **GitHub Actions** (`.github/workflows/deploy-k3s.yml`):
+
+1. **build** (GitHub-hosted): build image → push to GHCR  
+2. **deploy** (self-hosted runner on the k3s EC2 node): `kubectl apply` via `scripts/k3s-apply.sh`
 
 Production EKS manifests stay in `k8s/`; these files are for **k3s + Traefik** on EC2.
 
@@ -20,13 +23,29 @@ Open security-group ports as needed:
 
 | Port | Purpose |
 |------|---------|
-| 22 | SSH (GitHub Actions deploy) |
 | 80, 443 | Traefik Ingress |
-| 6443 | Kubernetes API (optional; not required for SSH deploy) |
+| 443 (outbound) | Runner ↔ GitHub |
 
 Point DNS `severedheadsunday.band` at the instance public IP (or a load balancer in front of it).
 
-## 2. GHCR pull access (private repos)
+## 2. Self-hosted GitHub runner
+
+The **deploy** job runs on a runner with labels `self-hosted` and `k3s` on this EC2 instance. Register the runner manually via **Settings → Actions → Runners → New self-hosted runner** (add the `k3s` label during setup).
+
+Give the runner user kubectl access:
+
+```bash
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown "$(id -u):$(id -g)" ~/.kube/config
+chmod 600 ~/.kube/config
+```
+
+The deploy step uses `$HOME/.kube/config` automatically (`scripts/k3s-apply.sh`).
+
+Confirm the runner is **Idle** in GitHub with labels `self-hosted`, `linux`, `k3s`.
+
+## 3. GHCR pull access (private repos)
 
 If the GitHub repo/package is **private**, create a pull secret on the cluster once (PAT needs `read:packages`):
 
@@ -43,23 +62,9 @@ kubectl -n severed-head-sunday create secret docker-registry ghcr-regcred \
 
 Public repos can skip this step.
 
-## 3. TLS (optional)
+## 4. TLS (optional)
 
 Install [cert-manager](https://cert-manager.io/docs/installation/) and a Let's Encrypt `ClusterIssuer`, then uncomment the TLS lines in `k8s/k3s/ingress.yaml`.
-
-## 4. First deploy (manual bootstrap)
-
-Clone the repo on the EC2 node (or copy manifests), build nothing locally—CI pushes the image. For the very first rollout, apply once with any tag (CI will replace it on the next push):
-
-```bash
-git clone https://github.com/YOUR_ORG/severed-head-sunday-site.git
-cd severed-head-sunday-site
-
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-IMAGE=ghcr.io/your-org/severed-head-sunday-web:bootstrap ./scripts/k3s-apply.sh
-```
-
-Or wait until GitHub Actions has pushed at least one image, then trigger **Actions → Deploy to k3s (EC2) → Run workflow**.
 
 ## 5. GitHub repository secrets
 
@@ -67,32 +72,38 @@ In **Settings → Secrets and variables → Actions**:
 
 | Secret | Required | Description |
 |--------|----------|-------------|
-| `K3S_HOST` | yes | EC2 public IP or hostname |
-| `K3S_SSH_USER` | yes | e.g. `ubuntu` or `ec2-user` |
-| `K3S_SSH_PRIVATE_KEY` | yes | PEM private key for SSH |
 | `VITE_MEDIA_BASE_URL` | no | S3/CloudFront base URL baked into the SPA at build time |
 | `VITE_BACKGROUND_IMAGE_URL` | no | Background image URL baked at build time |
 
-`GITHUB_TOKEN` is provided automatically for GHCR push.
+`GITHUB_TOKEN` is provided automatically for GHCR push. No SSH secrets are required with the self-hosted runner.
 
-After secrets are set, pushes to **`main`** deploy automatically.
+After the runner is online, pushes to **`main`** deploy automatically, or use **Actions → Deploy to k3s (EC2) → Run workflow** to test.
 
 ## 6. Verify
 
+On the EC2 node:
+
 ```bash
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+export KUBECONFIG=~/.kube/config   # or /etc/rancher/k3s/k3s.yaml as root
 kubectl -n severed-head-sunday get pods,ingress
-curl -H 'Host: severedheadsunday.band' http://localhost/health
+curl -H 'Host: severedheadsunday.band' http://127.0.0.1/health
 ```
 
 ## 7. Local one-off deploy
 
-From your laptop (with kubeconfig or SSH):
-
 ```bash
 IMAGE=ghcr.io/your-org/severed-head-sunday-web:abc123 \
-  KUBECONFIG=~/.kube/k3s-ec2.yaml \
+  KUBECONFIG=~/.kube/config \
   ./scripts/k3s-apply.sh
 ```
 
 Change `BUILD_PLATFORM` in `.github/workflows/deploy-k3s.yml` to `linux/arm64` if the EC2 instance is Graviton.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| Deploy job stuck “Waiting for a runner” | Runner offline or missing `k3s` label — check `sudo ./svc.sh status` |
+| `Unable to connect to the server` | Re-copy kubeconfig: `sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config` |
+| `ImagePullBackOff` on private repo | Add `ghcr-regcred` secret and uncomment `imagePullSecrets` in deployment |
+| Wrong kubeconfig path | Ensure `~/.kube/config` exists for the runner user (copy `k3s.yaml` manually) |

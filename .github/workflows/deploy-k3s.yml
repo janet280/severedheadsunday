@@ -11,21 +11,29 @@ permissions:
 
 env:
   IMAGE_NAME: severed-head-sunday-web
-  # EC2 instances are usually amd64; use linux/arm64 for Graviton.
+  # GitHub-hosted build target; use linux/arm64 for Graviton EC2.
   BUILD_PLATFORM: linux/amd64
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.coords.outputs.image }}
+      tag: ${{ steps.coords.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set image coordinates
+        id: coords
         run: |
           owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          echo "IMAGE=ghcr.io/${owner}/${IMAGE_NAME}" >> "$GITHUB_ENV"
-          echo "TAG=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+          tag="${GITHUB_SHA::12}"
+          image="ghcr.io/${owner}/${IMAGE_NAME}"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE=${image}" >> "$GITHUB_ENV"
+          echo "TAG=${tag}" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -50,27 +58,14 @@ jobs:
             docker buildx imagetools create -t "${IMAGE}:latest" "${IMAGE}:${TAG}"
           fi
 
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.K3S_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.K3S_HOST }}" >> ~/.ssh/known_hosts
+  deploy:
+    needs: build
+    runs-on: [self-hosted, k3s]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Deploy to k3s over SSH
+      - name: Deploy to cluster
         env:
-          K3S_HOST: ${{ secrets.K3S_HOST }}
-          K3S_SSH_USER: ${{ secrets.K3S_SSH_USER }}
-        run: |
-          DEPLOY_DIR="/tmp/severed-head-sunday-deploy-${TAG}"
-          tar czf deploy.tgz k8s scripts/k3s-apply.sh
-          scp deploy.tgz "${K3S_SSH_USER}@${K3S_HOST}:/tmp/severed-head-sunday-deploy.tgz"
-          ssh "${K3S_SSH_USER}@${K3S_HOST}" bash -s <<EOF
-          set -euo pipefail
-          rm -rf "${DEPLOY_DIR}"
-          mkdir -p "${DEPLOY_DIR}"
-          tar xzf /tmp/severed-head-sunday-deploy.tgz -C "${DEPLOY_DIR}"
-          chmod +x "${DEPLOY_DIR}/scripts/k3s-apply.sh"
-          IMAGE="${IMAGE}:${TAG}" "${DEPLOY_DIR}/scripts/k3s-apply.sh"
-          rm -rf "${DEPLOY_DIR}" /tmp/severed-head-sunday-deploy.tgz
-          EOF
+          IMAGE: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.tag }}
+        run: ./scripts/k3s-apply.sh

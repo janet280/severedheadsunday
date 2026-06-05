@@ -27,16 +27,15 @@ So Kubernetes can use `imagePullPolicy: Never` without ECR:
 
 ```bash
 eval $(minikube docker-env)
-docker build -t severed-head-sunday-web:local .
+IMAGE=severed-head-sunday-web:local ./scripts/docker-build.sh
 ```
 
-Optional media URLs at build time (same as production):
+On Apple Silicon (and other **arm64** hosts), this produces a **linux/arm64** image inside Minikube’s Docker. Optional media URLs at build time (same as production):
 
 ```bash
-docker build -t severed-head-sunday-web:local \
-  --build-arg VITE_MEDIA_BASE_URL="" \
-  --build-arg VITE_BACKGROUND_IMAGE_URL="" \
-  .
+eval $(minikube docker-env)
+VITE_MEDIA_BASE_URL="" VITE_BACKGROUND_IMAGE_URL="" \
+  IMAGE=severed-head-sunday-web:local ./scripts/docker-build.sh
 ```
 
 To use your **normal** Docker again later:
@@ -165,7 +164,7 @@ kubectl -n severed-head-sunday run curl --rm -it --image=curlimages/curl -- \
 
 ```bash
 eval $(minikube docker-env)
-docker build -t severed-head-sunday-web:local .
+IMAGE=severed-head-sunday-web:local ./scripts/docker-build.sh
 kubectl -n severed-head-sunday rollout restart deployment/severed-head-sunday-web
 kubectl -n severed-head-sunday rollout status deployment/severed-head-sunday-web
 ```

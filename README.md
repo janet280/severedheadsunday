@@ -107,9 +107,9 @@ Tune probes, resources, TLS, and Ingress controller annotations for your environ
 
 ## k3s on EC2 (GitHub Actions)
 
-For a single-node **k3s** cluster on EC2, use the workflow in `.github/workflows/deploy-k3s.yml`. It builds the image, pushes to **GHCR**, and deploys over **SSH** (no public Kubernetes API required).
+For a single-node **k3s** cluster on EC2, use the workflow in `.github/workflows/deploy-k3s.yml`. It builds on GitHub-hosted runners, pushes to **GHCR**, and deploys via a **self-hosted runner** on the k3s node.
 
-See **[k8s/k3s/README.md](k8s/k3s/README.md)** for EC2 bootstrap, GitHub secrets (`K3S_HOST`, `K3S_SSH_USER`, `K3S_SSH_PRIVATE_KEY`), and TLS with Traefik.
+See **[k8s/k3s/README.md](k8s/k3s/README.md)** for self-hosted runner setup, GHCR pull secrets, and TLS with Traefik.
 
 ## Notes
 
