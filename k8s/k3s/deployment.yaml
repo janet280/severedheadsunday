@@ -16,9 +16,9 @@ spec:
       labels:
         app.kubernetes.io/name: severed-head-sunday-web
     spec:
-      # Omit imagePullSecrets when the GHCR package is public.
-      # imagePullSecrets:
-      #   - name: ghcr-regcred
+      # Required for private ECR. Create with: ./scripts/k3s-ecr-secret.sh
+      imagePullSecrets:
+        - name: ecr-regcred
       securityContext:
         runAsNonRoot: true
         runAsUser: 101

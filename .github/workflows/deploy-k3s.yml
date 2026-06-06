@@ -23,9 +23,39 @@ jobs:
       # 2. Deploy straight to the local cluster 
       - name: Deploy Manifests locally
         run: |
+<<<<<<< HEAD
           # Inject the new image tag directly into your deployment file
           sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" k8s/deployment.yaml
           
           # Since the runner is inside the machine, it can talk directly to K3s over localhost!
           kubectl apply -f k8s/deployment.yaml
           kubectl rollout status deployment/vite-audio-app --timeout=120s
+=======
+          PLATFORMS="${BUILD_PLATFORM}" \
+            PUSH=1 \
+            IMAGE="${IMAGE}:${TAG}" \
+            VITE_MEDIA_BASE_URL="${VITE_MEDIA_BASE_URL}" \
+            VITE_BACKGROUND_IMAGE_URL="${VITE_BACKGROUND_IMAGE_URL}" \
+            ./scripts/docker-build.sh
+
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            docker buildx imagetools create -t "${IMAGE}:latest" "${IMAGE}:${TAG}"
+          fi
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, k3s]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure namespace
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl wait --for=jsonpath='{.status.phase}'=Active namespace/severed-head-sunday --timeout=30s
+
+      - name: Deploy to cluster
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.tag }}
+        run: ./scripts/k3s-apply.sh
+>>>>>>> 5e0ede8 (added k3s secret)
