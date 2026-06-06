@@ -23,14 +23,12 @@ jobs:
       # 2. Deploy straight to the local cluster 
       - name: Deploy Manifests locally
         run: |
-<<<<<<< HEAD
           # Inject the new image tag directly into your deployment file
           sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" k8s/deployment.yaml
           
           # Since the runner is inside the machine, it can talk directly to K3s over localhost!
           kubectl apply -f k8s/deployment.yaml
           kubectl rollout status deployment/vite-audio-app --timeout=120s
-=======
           PLATFORMS="${BUILD_PLATFORM}" \
             PUSH=1 \
             IMAGE="${IMAGE}:${TAG}" \
@@ -58,4 +56,3 @@ jobs:
         env:
           IMAGE: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.tag }}
         run: ./scripts/k3s-apply.sh
->>>>>>> 5e0ede8 (added k3s secret)
