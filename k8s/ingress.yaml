@@ -4,7 +4,12 @@ metadata:
   name: severed-head-sunday-web
   namespace: severed-head-sunday
   annotations:
-    # Add TLS / scheme / target-type annotations for AWS Load Balancer Controller as needed.
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:058264155697:certificate/ce2209c8-6d9f-4204-be52-01d16d8a5234
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /health 
 spec:
   ingressClassName: alb
   rules:

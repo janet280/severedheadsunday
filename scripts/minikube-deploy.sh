@@ -11,10 +11,7 @@ minikube status
 
 echo "==> Building image inside Minikube Docker: $IMAGE"
 eval "$(minikube docker-env)"
-docker build -t "$IMAGE" \
-  --build-arg VITE_MEDIA_BASE_URL="${VITE_MEDIA_BASE_URL:-}" \
-  --build-arg VITE_BACKGROUND_IMAGE_URL="${VITE_BACKGROUND_IMAGE_URL:-}" \
-  .
+IMAGE="$IMAGE" ./scripts/docker-build.sh
 
 echo "==> Applying manifests"
 kubectl apply -f k8s/namespace.yaml
