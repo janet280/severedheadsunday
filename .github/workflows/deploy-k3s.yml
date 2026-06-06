@@ -1,61 +1,45 @@
-name: Build and Deploy to K3s
+name: Deploy to k3s (EC2)
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ECR_REGISTRY: 058264155697.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: severed-head-sunday-web
+  AWS_REGION: us-east-1
 
 jobs:
   build-and-deploy:
-    # ---> CRUCIAL: Directs the job to execute natively on your EC2 instance! <---
-    runs-on: self-hosted
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 1. Build the Docker image natively (lightning fast on an actual ARM chip)
-      - name: Build Docker Image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} .
-          docker tag ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:latest
-
-      # 2. Deploy straight to the local cluster 
-      - name: Deploy Manifests locally
-        run: |
-<<<<<<< HEAD
-          # Inject the new image tag directly into your deployment file
-          sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" k8s/deployment.yaml
-          
-          # Since the runner is inside the machine, it can talk directly to K3s over localhost!
-          kubectl apply -f k8s/deployment.yaml
-          kubectl rollout status deployment/vite-audio-app --timeout=120s
-=======
-          PLATFORMS="${BUILD_PLATFORM}" \
-            PUSH=1 \
-            IMAGE="${IMAGE}:${TAG}" \
-            VITE_MEDIA_BASE_URL="${VITE_MEDIA_BASE_URL}" \
-            VITE_BACKGROUND_IMAGE_URL="${VITE_BACKGROUND_IMAGE_URL}" \
-            ./scripts/docker-build.sh
-
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            docker buildx imagetools create -t "${IMAGE}:latest" "${IMAGE}:${TAG}"
-          fi
-
-  deploy:
-    needs: build
     runs-on: [self-hosted, k3s]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ensure namespace
+      - name: Set image tag
+        run: echo "TAG=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+
+      - name: Log in to ECR
         run: |
-          kubectl apply -f k8s/namespace.yaml
-          kubectl wait --for=jsonpath='{.status.phase}'=Active namespace/severed-head-sunday --timeout=30s
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+      - name: Build and push
+        env:
+          IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.TAG }}
+          VITE_MEDIA_BASE_URL: ${{ secrets.VITE_MEDIA_BASE_URL }}
+          VITE_BACKGROUND_IMAGE_URL: ${{ secrets.VITE_BACKGROUND_IMAGE_URL }}
+        run: |
+          ./scripts/docker-build.sh
+          docker push "$IMAGE"
+          docker tag "$IMAGE" "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+
+      - name: Refresh ECR pull secret
+        run: ./scripts/k3s-ecr-secret.sh
 
       - name: Deploy to cluster
         env:
-          IMAGE: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.tag }}
+          IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.TAG }}
         run: ./scripts/k3s-apply.sh
->>>>>>> 5e0ede8 (added k3s secret)
