@@ -1,71 +1,31 @@
-name: Deploy to k3s (EC2)
+name: Build and Deploy to K3s
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
-
-env:
-  IMAGE_NAME: severed-head-sunday-web
-  # GitHub-hosted build target; use linux/arm64 for Graviton EC2.
-  BUILD_PLATFORM: linux/amd64
+    branches:
+      - main
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.coords.outputs.image }}
-      tag: ${{ steps.coords.outputs.tag }}
+  build-and-deploy:
+    # ---> CRUCIAL: Directs the job to execute natively on your EC2 instance! <---
+    runs-on: self-hosted
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set image coordinates
-        id: coords
+      # 1. Build the Docker image natively (lightning fast on an actual ARM chip)
+      - name: Build Docker Image
         run: |
-          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          tag="${GITHUB_SHA::12}"
-          image="ghcr.io/${owner}/${IMAGE_NAME}"
-          echo "image=${image}" >> "$GITHUB_OUTPUT"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "IMAGE=${image}" >> "$GITHUB_ENV"
-          echo "TAG=${tag}" >> "$GITHUB_ENV"
+          docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} .
+          docker tag ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:latest
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push
-        env:
-          VITE_MEDIA_BASE_URL: ${{ secrets.VITE_MEDIA_BASE_URL }}
-          VITE_BACKGROUND_IMAGE_URL: ${{ secrets.VITE_BACKGROUND_IMAGE_URL }}
+      # 2. Deploy straight to the local cluster 
+      - name: Deploy Manifests locally
         run: |
-          PLATFORMS="${BUILD_PLATFORM}" \
-            PUSH=1 \
-            IMAGE="${IMAGE}:${TAG}" \
-            VITE_MEDIA_BASE_URL="${VITE_MEDIA_BASE_URL}" \
-            VITE_BACKGROUND_IMAGE_URL="${VITE_BACKGROUND_IMAGE_URL}" \
-            ./scripts/docker-build.sh
-
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            docker buildx imagetools create -t "${IMAGE}:latest" "${IMAGE}:${TAG}"
-          fi
-
-  deploy:
-    needs: build
-    runs-on: [self-hosted, k3s]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Deploy to cluster
-        env:
-          IMAGE: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.tag }}
-        run: ./scripts/k3s-apply.sh
+          # Inject the new image tag directly into your deployment file
+          sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|g" k8s/deployment.yaml
+          
+          # Since the runner is inside the machine, it can talk directly to K3s over localhost!
+          kubectl apply -f k8s/deployment.yaml
+          kubectl rollout status deployment/vite-audio-app --timeout=120s
