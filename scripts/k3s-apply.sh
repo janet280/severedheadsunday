@@ -11,13 +11,9 @@ cd "$ROOT"
 IMAGE="${IMAGE:-${1:-}}"
 IMAGE="${IMAGE:?Set IMAGE env var or pass the full registry URI as the first argument}"
 
-if [[ -z "${KUBECONFIG:-}" ]]; then
-  if [[ -f "${HOME}/.kube/config" ]]; then
-    export KUBECONFIG="${HOME}/.kube/config"
-  else
-    export KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
-  fi
-fi
+# shellcheck source=scripts/k3s-kubeconfig.sh
+source "$ROOT/scripts/k3s-kubeconfig.sh"
+k3s_use_kubeconfig
 
 echo "==> Ensuring namespace severed-head-sunday"
 kubectl apply -f k8s/namespace.yaml

@@ -1,9 +1,6 @@
 # k3s on a single EC2 instance
 
-Deploys use **GitHub Actions** (`.github/workflows/deploy-k3s.yml`):
-
-1. **build** (GitHub-hosted): build image → push to GHCR  
-2. **deploy** (self-hosted runner on the k3s EC2 node): `kubectl apply` via `scripts/k3s-apply.sh`
+Deploys use **GitHub Actions** (`.github/workflows/deploy-k3s.yml`): a single **self-hosted** job on the k3s EC2 node builds, pushes to ECR, and runs `scripts/k3s-apply.sh`.
 
 Production EKS manifests stay in `k8s/`; these files are for **k3s + Traefik** on EC2.
 
@@ -30,7 +27,7 @@ Point DNS `severedheadsunday.band` at the instance public IP (or a load balancer
 
 ## 2. Self-hosted GitHub runner
 
-The **deploy** job runs on a runner with labels `self-hosted` and `k3s` on this EC2 instance. Register the runner manually via **Settings → Actions → Runners → New self-hosted runner** (add the `k3s` label during setup).
+The workflow uses `runs-on: self-hosted`. Register a runner on this EC2 instance via **Settings → Actions → Runners → New self-hosted runner**.
 
 Give the runner user kubectl access:
 
@@ -41,9 +38,15 @@ sudo chown "$(id -u):$(id -g)" ~/.kube/config
 chmod 600 ~/.kube/config
 ```
 
-The deploy step uses `$HOME/.kube/config` automatically (`scripts/k3s-apply.sh`).
+Install and start the runner service (from the runner install directory):
 
-Confirm the runner is **Idle** in GitHub with labels `self-hosted`, `linux`, `k3s`.
+```bash
+sudo ./svc.sh install ubuntu    # use your runner user
+sudo ./svc.sh start
+sudo ./svc.sh status
+```
+
+Confirm the runner shows **Idle** in GitHub (green dot). If the job sits at “Waiting for a runner…”, the runner is offline, registered to the wrong repo/org, or missing the `self-hosted` label.
 
 ## 3. ECR pull access (required for private ECR)
 
@@ -127,7 +130,7 @@ Change `BUILD_PLATFORM` in `.github/workflows/deploy-k3s.yml` to `linux/arm64` i
 | Symptom | Fix |
 |---------|-----|
 | `namespaces "severed-head-sunday" not found` on `k8s/deployment.yaml` | Do **not** apply `k8s/` or `k8s/deployment.yaml` directly — those are for EKS. Use `./scripts/k3s-apply.sh` or apply `k8s/k3s/` after the namespace exists |
-| Deploy job stuck “Waiting for a runner” | Runner offline or missing `k3s` label — check `sudo ./svc.sh status` |
+| Deploy job stuck “Waiting for a runner” | Runner offline — `sudo ./svc.sh status` on EC2; confirm **Idle** in GitHub → Settings → Actions → Runners; runner must be registered to **this repo** (or org) with label `self-hosted` |
 | `Unable to connect to the server` | Re-copy kubeconfig: `sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config` |
 | `ImagePullBackOff` / `no basic auth credentials` on ECR | Run `./scripts/k3s-ecr-secret.sh`, ensure EC2 has IAM ECR read role, re-apply deployment |
 | `ImagePullBackOff` on GHCR private repo | Add `ghcr-regcred` secret and swap `imagePullSecrets` in deployment |
