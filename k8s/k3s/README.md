@@ -45,22 +45,45 @@ The deploy step uses `$HOME/.kube/config` automatically (`scripts/k3s-apply.sh`)
 
 Confirm the runner is **Idle** in GitHub with labels `self-hosted`, `linux`, `k3s`.
 
-## 3. GHCR pull access (private repos)
+## 3. ECR pull access (required for private ECR)
 
-If the GitHub repo/package is **private**, create a pull secret on the cluster once (PAT needs `read:packages`):
+k3s does **not** use the EC2 IAM role automatically for image pulls. Create a Kubernetes pull secret once (then refresh every ~12 hours, or add a cron job):
+
+**1. Attach an IAM role to the EC2 instance** with at least:
+
+- `ecr:GetAuthorizationToken` (resource `*`)
+- `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, `ecr:BatchCheckLayerAvailability` (on your repo or `*`)
+
+The managed policy `AmazonEC2ContainerRegistryReadOnly` works.
+
+**2. Install AWS CLI on the EC2 node** (uses the instance role — no access keys needed):
 
 ```bash
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-
-kubectl -n severed-head-sunday create secret docker-registry ghcr-regcred \
-  --docker-server=ghcr.io \
-  --docker-username=YOUR_GITHUB_USER \
-  --docker-password=YOUR_PAT
-
-# Uncomment imagePullSecrets in k8s/k3s/deployment.yaml, then re-apply.
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o /tmp/awscliv2.zip
+unzip -q /tmp/awscliv2.zip -d /tmp
+sudo /tmp/aws/install
+aws sts get-caller-identity   # should show the instance role
 ```
 
-Public repos can skip this step.
+**3. Create the pull secret and redeploy:**
+
+```bash
+cd severed-head-sunday-site
+./scripts/k3s-ecr-secret.sh
+
+IMAGE=058264155697.dkr.ecr.us-east-1.amazonaws.com/severed-head-sunday-web:v1 \
+  ./scripts/k3s-apply.sh
+```
+
+Refresh the secret before redeploys (or cron every 6h):
+
+```bash
+./scripts/k3s-ecr-secret.sh
+```
+
+### GHCR instead of ECR
+
+If CI pushes to GHCR and the package is private, use `ghcr-regcred` instead — swap `imagePullSecrets` in `k8s/k3s/deployment.yaml` and create the secret with a GitHub PAT (`read:packages`).
 
 ## 4. TLS (optional)
 
@@ -103,7 +126,9 @@ Change `BUILD_PLATFORM` in `.github/workflows/deploy-k3s.yml` to `linux/arm64` i
 
 | Symptom | Fix |
 |---------|-----|
+| `namespaces "severed-head-sunday" not found` on `k8s/deployment.yaml` | Do **not** apply `k8s/` or `k8s/deployment.yaml` directly — those are for EKS. Use `./scripts/k3s-apply.sh` or apply `k8s/k3s/` after the namespace exists |
 | Deploy job stuck “Waiting for a runner” | Runner offline or missing `k3s` label — check `sudo ./svc.sh status` |
 | `Unable to connect to the server` | Re-copy kubeconfig: `sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config` |
-| `ImagePullBackOff` on private repo | Add `ghcr-regcred` secret and uncomment `imagePullSecrets` in deployment |
+| `ImagePullBackOff` / `no basic auth credentials` on ECR | Run `./scripts/k3s-ecr-secret.sh`, ensure EC2 has IAM ECR read role, re-apply deployment |
+| `ImagePullBackOff` on GHCR private repo | Add `ghcr-regcred` secret and swap `imagePullSecrets` in deployment |
 | Wrong kubeconfig path | Ensure `~/.kube/config` exists for the runner user (copy `k3s.yaml` manually) |
