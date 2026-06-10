@@ -12,7 +12,9 @@ env:
 
 jobs:
   build-and-deploy:
-    runs-on: [self-hosted, k3s]
+    # Requires an online self-hosted runner on the k3s EC2 node.
+    # Add the k3s label in GitHub runner settings if you use: runs-on: [self-hosted, k3s]
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4

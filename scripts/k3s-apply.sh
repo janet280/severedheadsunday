@@ -11,13 +11,9 @@ cd "$ROOT"
 IMAGE="${IMAGE:-${1:-}}"
 IMAGE="${IMAGE:?Set IMAGE env var or pass the full registry URI as the first argument}"
 
-if [[ -z "${KUBECONFIG:-}" ]]; then
-  if [[ -f "${HOME}/.kube/config" ]]; then
-    export KUBECONFIG="${HOME}/.kube/config"
-  else
-    export KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
-  fi
-fi
+# shellcheck source=scripts/k3s-kubeconfig.sh
+source "$ROOT/scripts/k3s-kubeconfig.sh"
+k3s_use_kubeconfig
 
 echo "==> Ensuring namespace severed-head-sunday"
 kubectl apply -f k8s/namespace.yaml
@@ -27,6 +23,16 @@ echo "==> Applying manifests"
 kubectl apply -f k8s/service.yaml
 sed "s|__IMAGE__|${IMAGE}|g" k8s/k3s/deployment.yaml | kubectl apply -f -
 kubectl apply -f k8s/k3s/ingress.yaml
+
+if kubectl get crd certificates.cert-manager.io &>/dev/null; then
+  echo "==> Applying cert-manager issuers and certificate"
+  kubectl apply -f k8s/k3s/cert-manager-issuers.yaml
+  kubectl apply -f k8s/k3s/certificate.yaml
+else
+  echo "warn: cert-manager not installed — no Certificate will be created"
+  echo "  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml"
+  echo "  then re-run this script or: kubectl apply -f k8s/k3s/cert-manager-issuers.yaml -f k8s/k3s/certificate.yaml"
+fi
 
 if ! kubectl -n severed-head-sunday rollout status deployment/severed-head-sunday-web --timeout=180s; then
   echo ""

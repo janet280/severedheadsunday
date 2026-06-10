@@ -1,0 +1,30 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: janet280ce@gmail.com
+    privateKeySecretRef:
+      # Use a new name when changing ACME email (forces new account; old secrets keep old email).
+      name: letsencrypt-staging-acme-v2
+    solvers:
+      - http01:
+          ingress:
+            class: traefik
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: janet280ce@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-acme-v2
+    solvers:
+      - http01:
+          ingress:
+            class: traefik
