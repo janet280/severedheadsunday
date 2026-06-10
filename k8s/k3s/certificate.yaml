@@ -1,0 +1,13 @@
+# Explicit Certificate (clearer than ingress-shim alone). Ingress references secretName below.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: severedheadsunday-tls
+  namespace: severed-head-sunday
+spec:
+  secretName: severedheadsunday-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - severedheadsunday.band

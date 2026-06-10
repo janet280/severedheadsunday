@@ -1,25 +1,26 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: severed-head-sunday-web
+  name: app-ingress
   namespace: severed-head-sunday
   annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:058264155697:certificate/ce2209c8-6d9f-4204-be52-01d16d8a5234
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
-    alb.ingress.kubernetes.io/healthcheck-path: /health 
+    # Tell K3s to use the built-in Traefik ingress controller
+    kubernetes.io/ingress.class: traefik
+    # Tell Cert-Manager to automatically issue a certificate using your production issuer
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
-  ingressClassName: alb
+  tls:
+  - hosts:
+    - severedheadsunday.band             # <--- Your actual domain name
+    secretName: app-tls-secret # <--- Cert-Manager will create this secret automatically
   rules:
-    - host: severedheadsunday.band
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: severed-head-sunday-web
-                port:
-                  number: 80
+  - host: severedheadsunday.band
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: severed-head-sunday-web # <--- Name of your internal K8s service
+            port:
+              number: 80           # <--- Port your service listens on

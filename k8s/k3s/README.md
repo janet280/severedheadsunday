@@ -35,9 +35,9 @@ aws sts get-caller-identity
 
 Open security-group ports as needed:
 
-| Port | Purpose |
-|------|---------|
-| 80, 443 | Traefik Ingress |
+| Port           | Purpose         |
+| -------------- | --------------- |
+| 80, 443        | Traefik Ingress |
 | 443 (outbound) | Runner ↔ GitHub |
 
 Point DNS `severedheadsunday.band` at the instance public IP (or a load balancer in front of it).
@@ -71,13 +71,13 @@ k3s does **not** use the EC2 IAM role automatically for **image pulls**. Pods us
 
 ### How ECR auth works (no long-lived keys)
 
-| Step | What authenticates | Env vars |
-|------|-------------------|----------|
-| **user_data** | Installs AWS CLI; writes `AWS_REGION`, `ECR_REGISTRY` to `/etc/profile.d/severed-head-sunday-ecr.sh` | Region + registry only — **not** `AWS_ACCESS_KEY_ID` |
-| **EC2 IAM role** | `aws ecr get-login-password` and `docker login` use temporary credentials from the instance metadata service | Automatic when role is attached |
-| **`k3s-ecr-secret.sh`** | Calls `aws ecr get-login-password`, stores token in K8s secret `ecr-regcred` (~12h TTL) | `ECR_REGISTRY`, `AWS_REGION` (defaults match workflow) |
+| Step                                                    | What authenticates                                                                                                             | Env vars                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| **user_data**                                           | Installs AWS CLI; writes `AWS_REGION`, `ECR_REGISTRY` to `/etc/profile.d/severed-head-sunday-ecr.sh`                           | Region + registry only — **not** `AWS_ACCESS_KEY_ID`              |
+| **EC2 IAM role**                                        | `aws ecr get-login-password` and `docker login` use temporary credentials from the instance metadata service                   | Automatic when role is attached                                   |
+| **`k3s-ecr-secret.sh`**                                 | Calls `aws ecr get-login-password`, stores token in K8s secret `ecr-regcred` (~12h TTL)                                        | `ECR_REGISTRY`, `AWS_REGION` (defaults match workflow)            |
 | **GitHub Actions** (`.github/workflows/deploy-k3s.yml`) | Same IAM role on the self-hosted runner: `aws ecr get-login-password \| docker login` then push; then runs `k3s-ecr-secret.sh` | `ECR_REGISTRY`, `AWS_REGION`, `ECR_REPOSITORY` in workflow `env:` |
-| **Pod pull** | `imagePullSecrets: ecr-regcred` in `k8s/k3s/deployment.yaml` | None on the pod |
+| **Pod pull**                                            | `imagePullSecrets: ecr-regcred` in `k8s/k3s/deployment.yaml`                                                                   | None on the pod                                                   |
 
 You do **not** put AWS access keys in user_data. Attach an **IAM instance profile** instead.
 
@@ -111,16 +111,32 @@ If CI pushes to GHCR and the package is private, use `ghcr-regcred` instead — 
 
 ## 4. TLS (optional)
 
-Install [cert-manager](https://cert-manager.io/docs/installation/) and a Let's Encrypt `ClusterIssuer`, then uncomment the TLS lines in `k8s/k3s/ingress.yaml`.
+One-time on the EC2 node (before or after first deploy):
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=120s
+./scripts/k3s-cert-manager-reset-issuers.sh   # or: kubectl apply -f k8s/k3s/cert-manager-issuers.yaml
+```
+
+Each deploy via `./scripts/k3s-apply.sh` applies [`certificate.yaml`](certificate.yaml) and [`ingress.yaml`](ingress.yaml). The Certificate requests Let's Encrypt via **`letsencrypt-prod`** into secret **`severedheadsunday-tls`**. Test staging first by changing `issuerRef.name` in `certificate.yaml` to `letsencrypt-staging`.
+
+**Remove cert-manager** (e.g. wrong ACME email like `example.com` stuck in old secrets):
+
+```bash
+./scripts/k3s-cert-manager-remove.sh
+```
+
+That drops ClusterIssuers, certificates, TLS secrets, and uninstalls the cert-manager namespace. Site returns to **HTTP-only** until you use ACM on an ALB or reinstall cert-manager with the correct email in `cert-manager-issuers.yaml`.
 
 ## 5. GitHub repository secrets
 
 In **Settings → Secrets and variables → Actions**:
 
-| Secret | Required | Description |
-|--------|----------|-------------|
-| `VITE_MEDIA_BASE_URL` | no | S3/CloudFront base URL baked into the SPA at build time |
-| `VITE_BACKGROUND_IMAGE_URL` | no | Background image URL baked at build time |
+| Secret                      | Required | Description                                             |
+| --------------------------- | -------- | ------------------------------------------------------- |
+| `VITE_MEDIA_BASE_URL`       | no       | S3/CloudFront base URL baked into the SPA at build time |
+| `VITE_BACKGROUND_IMAGE_URL` | no       | Background image URL baked at build time                |
 
 `GITHUB_TOKEN` is provided automatically for GHCR push. No SSH secrets are required with the self-hosted runner.
 
@@ -148,11 +164,13 @@ Change `BUILD_PLATFORM` in `.github/workflows/deploy-k3s.yml` to `linux/arm64` i
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| `namespaces "severed-head-sunday" not found` on `k8s/deployment.yaml` | Do **not** apply `k8s/` or `k8s/deployment.yaml` directly — those are for EKS. Use `./scripts/k3s-apply.sh` or apply `k8s/k3s/` after the namespace exists |
-| Deploy job stuck “Waiting for a runner” | Runner offline — `sudo ./svc.sh status` on EC2; confirm **Idle** in GitHub → Settings → Actions → Runners; runner must be registered to **this repo** (or org) with label `self-hosted` |
-| `Unable to connect to the server` | Re-copy kubeconfig: `sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config` |
-| `ImagePullBackOff` / `no basic auth credentials` on ECR | Run `./scripts/k3s-ecr-secret.sh`, ensure EC2 has IAM ECR read role, re-apply deployment |
-| `ImagePullBackOff` on GHCR private repo | Add `ghcr-regcred` secret and swap `imagePullSecrets` in deployment |
-| Wrong kubeconfig path | Ensure `~/.kube/config` exists for the runner user (copy `k3s.yaml` manually) |
+| Symptom                                                               | Fix                                                                                                                                                                                     |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `namespaces "severed-head-sunday" not found` on `k8s/deployment.yaml` | Do **not** apply `k8s/` or `k8s/deployment.yaml` directly — those are for EKS. Use `./scripts/k3s-apply.sh` or apply `k8s/k3s/` after the namespace exists                              |
+| Deploy job stuck “Waiting for a runner”                               | Runner offline — `sudo ./svc.sh status` on EC2; confirm **Idle** in GitHub → Settings → Actions → Runners; runner must be registered to **this repo** (or org) with label `self-hosted` |
+| `Unable to connect to the server`                                     | Re-copy kubeconfig: `sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config`                                                                                      |
+| `ImagePullBackOff` / `no basic auth credentials` on ECR               | Run `./scripts/k3s-ecr-secret.sh`, ensure EC2 has IAM ECR read role, re-apply deployment                                                                                                |
+| `ImagePullBackOff` on GHCR private repo                               | Add `ghcr-regcred` secret and swap `imagePullSecrets` in deployment                                                                                                                     |
+| Wrong kubeconfig path                                                 | Ensure `~/.kube/config` exists for the runner user (copy `k3s.yaml` manually)                                                                                                           |
+| `kubectl get certificate` empty in `severed-head-sunday`              | cert-manager not installed, or issuers/cert not applied — see TLS section; run `kubectl apply -f k8s/k3s/cert-manager-issuers.yaml -f k8s/k3s/certificate.yaml`                         |
+| Certificate `Ready=False`                                             | `kubectl describe certificate,order,challenge -n severed-head-sunday`; DNS must point at this node; port 80 open for HTTP-01                                                            |
