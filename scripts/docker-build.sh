@@ -5,7 +5,7 @@
 #   ./scripts/docker-build.sh
 #   IMAGE=severed-head-sunday-web:local ./scripts/docker-build.sh
 #
-# Single platform via buildx (e.g. Graviton / arm64 EKS):
+# Single platform via buildx (e.g. Graviton / arm64 EC2):
 #   PLATFORMS=linux/arm64 IMAGE=$REGISTRY/severed-head-sunday-web:v1 ./scripts/docker-build.sh
 #
 # Multi-arch registry push:

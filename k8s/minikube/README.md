@@ -1,6 +1,6 @@
 # Run on Minikube (local Kubernetes learning)
 
-Use this on the same machine as development. **AWS ALB Ingress does not work on Minikube** — these manifests use a **local Docker image** and optional **NGINX Ingress** (or `port-forward`).
+Use this on the same machine as development. Production **Traefik** ingress on k3s does not apply here — these manifests use a **local Docker image** and optional **NGINX Ingress** (or `port-forward`).
 
 ## Prerequisites
 
@@ -177,13 +177,13 @@ kubectl delete namespace severed-head-sunday
 minikube delete
 ```
 
-## Minikube vs AWS EKS (this repo)
+## Minikube vs production k3s (this repo)
 
-| Topic | Minikube | EKS |
-|--------|----------|-----|
-| Ingress | `ingressClassName: nginx` | `alb` + ALB annotations |
-| Image | `severed-head-sunday-web:local`, `Never` | ECR URI, `Always` |
-| Replicas | `1` in `k8s/minikube/deployment.yaml` | `2` in `k8s/deployment.yaml` |
-| DNS | `localhost` or `/etc/hosts` | Route 53 → ALB |
+| Topic | Minikube | k3s on EC2 (`k8s/`) |
+|--------|----------|---------------------|
+| Ingress | `ingressClassName: nginx` | `traefik` + cert-manager TLS |
+| Image | `severed-head-sunday-web:local`, `Never` | ECR URI via `k3s-apply.sh`, `Always` |
+| Replicas | `1` in `k8s/minikube/deployment.yaml` | `1` in `k8s/deployment.yaml` |
+| DNS | `localhost` or `/etc/hosts` | Route 53 → EC2 public IP |
 
-Production manifests stay in `k8s/` (not `k8s/minikube/`).
+Production manifests are in `k8s/` (not `k8s/minikube/`). Deploy with `./scripts/k3s-apply.sh`.

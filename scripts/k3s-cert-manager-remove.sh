@@ -23,8 +23,8 @@ kubectl patch ingress severed-head-sunday-web -n severed-head-sunday --type=json
   -p='[{"op": "remove", "path": "/spec/tls"}]' 2>/dev/null || true
 
 echo "==> Deleting ClusterIssuers and app TLS resources"
-kubectl delete -f "$ROOT/k8s/k3s/certificate.yaml" --ignore-not-found
-kubectl delete -f "$ROOT/k8s/k3s/cert-manager-issuers.yaml" --ignore-not-found
+kubectl delete -f "$ROOT/k8s/certificate.yaml" --ignore-not-found
+kubectl delete -f "$ROOT/k8s/cert-manager-issuers.yaml" --ignore-not-found
 kubectl delete certificate --all -n severed-head-sunday --ignore-not-found
 kubectl delete certificaterequest --all -n severed-head-sunday --ignore-not-found
 kubectl delete order --all -n severed-head-sunday --ignore-not-found

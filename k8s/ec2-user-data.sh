@@ -1,12 +1,12 @@
 #!/bin/bash
 # EC2 launch template / instance user_data (paste as plain text, or base64-encode for API).
-# Installs AWS CLI v2, k3s, and common deps for deploy-k3s.yml + k3s-ecr-secret.sh.
+# Installs AWS CLI v2, k3s, and common deps for deploy.yml + k3s-ecr-secret.sh.
 set -euo pipefail
 exec > >(tee /var/log/severed-head-sunday-user-data.log) 2>&1
 
 echo "==> user_data start $(date -Is)"
 
-# ECR settings for scripts/k3s-ecr-secret.sh and deploy-k3s.yml (no access keys here).
+# ECR settings for scripts/k3s-ecr-secret.sh and deploy.yml (no access keys here).
 # Auth uses the EC2 instance IAM role via the AWS CLI credential chain.
 ECR_REGISTRY="${ECR_REGISTRY:-058264155697.dkr.ecr.us-east-1.amazonaws.com}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
