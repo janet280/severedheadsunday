@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reset Let's Encrypt ClusterIssuers and force a NEW ACME account (fixes stuck example.com email).
-# Run on the k3s EC2 node after editing email in k8s/k3s/cert-manager-issuers.yaml.
+# Run on the k3s EC2 node after editing email in k8s/cert-manager-issuers.yaml.
 #
 #   ./scripts/k3s-cert-manager-reset-issuers.sh
 set -euo pipefail
@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/k3s-kubeconfig.sh"
 k3s_use_kubeconfig
 
-ISSUERS_FILE="$ROOT/k8s/k3s/cert-manager-issuers.yaml"
+ISSUERS_FILE="$ROOT/k8s/cert-manager-issuers.yaml"
 
 echo "==> Email in file you are about to apply:"
 grep 'email:' "$ISSUERS_FILE" || true

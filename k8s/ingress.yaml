@@ -1,26 +1,24 @@
+# k3s ships Traefik as the default Ingress controller.
+# TLS secret is issued by k8s/certificate.yaml (cert-manager).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: app-ingress
+  name: severed-head-sunday-web
   namespace: severed-head-sunday
-  annotations:
-    # Tell K3s to use the built-in Traefik ingress controller
-    kubernetes.io/ingress.class: traefik
-    # Tell Cert-Manager to automatically issue a certificate using your production issuer
-    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  ingressClassName: traefik
   tls:
-  - hosts:
-    - severedheadsunday.band             # <--- Your actual domain name
-    secretName: app-tls-secret # <--- Cert-Manager will create this secret automatically
+    - hosts:
+        - severedheadsunday.band
+      secretName: severedheadsunday-tls
   rules:
-  - host: severedheadsunday.band
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: severed-head-sunday-web # <--- Name of your internal K8s service
-            port:
-              number: 80           # <--- Port your service listens on
+    - host: severedheadsunday.band
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: severed-head-sunday-web
+                port:
+                  number: 80

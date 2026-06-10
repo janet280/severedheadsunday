@@ -27,7 +27,7 @@ docker compose build --no-cache
 docker compose up
 ```
 
-Images use multi-arch base tags (`node:22-alpine`, `nginxinc/nginx-unprivileged`). On Apple Silicon and other **arm64** hosts, Compose builds a native **linux/arm64** image automatically. The Dockerfile uses BuildKit `BUILDPLATFORM` / `TARGETPLATFORM` so the same file supports cross-platform builds via `./scripts/docker-build.sh` (see EKS below).
+Images use multi-arch base tags (`node:22-alpine`, `nginxinc/nginx-unprivileged`). On Apple Silicon and other **arm64** hosts, Compose builds a native **linux/arm64** image automatically. The Dockerfile uses BuildKit `BUILDPLATFORM` / `TARGETPLATFORM` so the same file supports cross-platform builds via `./scripts/docker-build.sh`.
 
 Open `http://localhost:8080`.
 
@@ -53,63 +53,31 @@ Browsers require CORS on the bucket for cross-origin audio + Web Audio; configur
 - **HTML/JS/CSS**: after `npm run build`, use `scripts/sync-static-to-s3.sh` to publish `dist/` (long-cache hashed assets, short-cache `index.html`).
 - **Audio / images**: use `scripts/sync-media-to-s3.sh` for bulk uploads to a media bucket; point `VITE_MEDIA_BASE_URL` and `VITE_BACKGROUND_IMAGE_URL` at that bucket or CloudFront.
 
+## Production: k3s on EC2
+
+The site deploys to a single-node **k3s** cluster on EC2 via GitHub Actions (`.github/workflows/deploy.yml`):
+
+- Self-hosted runner on the EC2 node builds, pushes to **ECR**, and runs `./scripts/k3s-apply.sh`
+- Manifests in **`k8s/`** (Traefik ingress, cert-manager TLS)
+
+Full setup: **[k8s/README.md](k8s/README.md)** (EC2 user-data, runner, ECR pull secret, TLS).
+
+Quick verify on the node:
+
+```bash
+kubectl -n severed-head-sunday get pods,ingress,certificate
+curl -H 'Host: severedheadsunday.band' http://127.0.0.1/health
+```
+
 ## Minikube (local Kubernetes practice)
 
-See **[k8s/minikube/README.md](k8s/minikube/README.md)** for a full walkthrough. Quick start:
+See **[k8s/minikube/README.md](k8s/minikube/README.md)**. Uses `k8s/minikube/` manifests (local image, optional NGINX Ingress). Not used for production.
 
 ```bash
 minikube start --cpus=2 --memory=4096
 ./scripts/minikube-deploy.sh
 kubectl -n severed-head-sunday port-forward svc/severed-head-sunday-web 8080:80
 ```
-
-Uses `k8s/minikube/` manifests (local image, NGINX Ingress optional). Production EKS manifests in `k8s/` are unchanged.
-
-## Amazon EKS
-
-1. Build and push the image (replace registry/repo/tag):
-
-   ```bash
-   # Native arch (e.g. arm64 laptop → arm64 EKS nodes)
-   IMAGE=$REGISTRY/severed-head-sunday-web:v1 \
-     VITE_MEDIA_BASE_URL="$VITE_MEDIA_BASE_URL" \
-     VITE_BACKGROUND_IMAGE_URL="$VITE_BACKGROUND_IMAGE_URL" \
-     ./scripts/docker-build.sh
-   docker push $REGISTRY/severed-head-sunday-web:v1
-
-   # Explicit arm64 (from any host with buildx + QEMU)
-   PLATFORMS=linux/arm64 IMAGE=$REGISTRY/severed-head-sunday-web:v1 \
-     VITE_MEDIA_BASE_URL="$VITE_MEDIA_BASE_URL" \
-     VITE_BACKGROUND_IMAGE_URL="$VITE_BACKGROUND_IMAGE_URL" \
-     ./scripts/docker-build.sh
-   docker push $REGISTRY/severed-head-sunday-web:v1
-
-   # Multi-arch manifest (amd64 + arm64 node pools)
-   PLATFORMS=linux/amd64,linux/arm64 PUSH=1 \
-     IMAGE=$REGISTRY/severed-head-sunday-web:v1 \
-     VITE_MEDIA_BASE_URL="$VITE_MEDIA_BASE_URL" \
-     VITE_BACKGROUND_IMAGE_URL="$VITE_BACKGROUND_IMAGE_URL" \
-     ./scripts/docker-build.sh
-   ```
-
-2. Edit `k8s/deployment.yaml` — set `image:` to your pushed URI.
-
-3. Apply manifests (Ingress annotations assume an AWS ALB-style class; change for your cluster):
-
-   ```bash
-   kubectl apply -f k8s/namespace.yaml
-   kubectl apply -f k8s/deployment.yaml
-   kubectl apply -f k8s/service.yaml
-   kubectl apply -f k8s/ingress.yaml
-   ```
-
-Tune probes, resources, TLS, and Ingress controller annotations for your environment.
-
-## k3s on EC2 (GitHub Actions)
-
-For a single-node **k3s** cluster on EC2, use the workflow in `.github/workflows/deploy-k3s.yml`. It builds on GitHub-hosted runners, pushes to **GHCR**, and deploys via a **self-hosted runner** on the k3s node.
-
-See **[k8s/k3s/README.md](k8s/k3s/README.md)** for self-hosted runner setup, GHCR pull secrets, and TLS with Traefik.
 
 ## Notes
 
