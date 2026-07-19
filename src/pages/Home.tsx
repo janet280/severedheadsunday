@@ -25,6 +25,7 @@ export function Home() {
   const currentIndexRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [vizReady, setVizReady] = useState(false);
+  const [playerVisible, setPlayerVisible] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -32,29 +33,34 @@ export function Home() {
     import.meta.env.VITE_BACKGROUND_IMAGE_URL?.trim() ||
     "";
 
-  const playTrack = useCallback(
-    (index: number) => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      let next = index;
-      if (next >= TRACKS.length) next = 0;
-      if (next < 0) next = TRACKS.length - 1;
-      setCurrentIndex(next);
-      currentIndexRef.current = next;
-      const url = resolveAudioUrl(TRACKS[next].file);
-      audio.src = url;
-      setLoadError(null);
-      setVizReady(true);
-      audio.load();
-      void audio
-        .play()
-        .then(() => requestScreenWakeLock())
-        .catch(() => {
-          /* autoplay policies — user gesture via playlist works */
-        });
-    },
-    [],
-  );
+  const playTrack = useCallback((index: number) => {
+    let next = index;
+    if (next >= TRACKS.length) next = 0;
+    if (next < 0) next = TRACKS.length - 1;
+    setCurrentIndex(next);
+    currentIndexRef.current = next;
+    setLoadError(null);
+    setVizReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!vizReady) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const track = TRACKS[currentIndex];
+    if (!track) return;
+
+    const url = resolveAudioUrl(track.file);
+    audio.src = url;
+    audio.load();
+    void audio
+      .play()
+      .then(() => requestScreenWakeLock())
+      .catch(() => {
+        /* autoplay policies — user gesture via playlist works */
+      });
+  }, [currentIndex, vizReady]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -87,7 +93,7 @@ export function Home() {
       window.removeEventListener("pagehide", onPageHide);
       void releaseScreenWakeLock();
     };
-  }, []);
+  }, [vizReady, currentIndex]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -95,7 +101,7 @@ export function Home() {
     const onEnded = () => playTrack(currentIndexRef.current + 1);
     audio.addEventListener("ended", onEnded);
     return () => audio.removeEventListener("ended", onEnded);
-  }, [playTrack]);
+  }, [playTrack, vizReady, currentIndex]);
 
   const layoutClass = [
     "main-layout",
@@ -125,12 +131,11 @@ export function Home() {
 
           <div className="stage-row">
             <div className="stage-board">
-              <div className="viz-frame viz-frame--compact">
-                <AudioVisualizer
-                  audioRef={audioRef}
-                  isPlayingContext={vizReady}
-                />
-              </div>
+              <AudioVisualizer
+                audioRef={audioRef}
+                isPlayingContext={vizReady}
+                trackKey={currentIndex}
+              />
               <SessionLog />
             </div>
 
@@ -151,6 +156,7 @@ export function Home() {
                   const prev = TRACKS[index - 1];
                   const showSectionHeading =
                     index === 0 || track.section !== prev.section;
+                  const isActive = index === currentIndex;
                   return (
                     <Fragment key={track.slug}>
                       {showSectionHeading ? (
@@ -162,50 +168,57 @@ export function Home() {
                       ) : null}
                       <button
                         type="button"
-                        className={`track ${index === currentIndex ? "active-track" : ""}`}
+                        className={`track ${isActive && vizReady ? "active-track" : ""}`}
                         onClick={() => playTrack(index)}
                       >
                         {track.label}
                       </button>
+                      {isActive && vizReady ? (
+                        <div
+                          className={`player-container player-container--inline${playerVisible ? "" : " player-container--pending"}`}
+                        >
+                          {loadError ? (
+                            <p className="audio-load-error" role="alert">
+                              {loadError}
+                            </p>
+                          ) : null}
+                          <audio
+                            ref={audioRef}
+                            controls={playerVisible}
+                            crossOrigin={
+                              mediaRequiresCrossOrigin()
+                                ? "anonymous"
+                                : undefined
+                            }
+                            preload="metadata"
+                            onError={() => {
+                              const file =
+                                TRACKS[currentIndexRef.current]?.file ?? "?";
+                              setLoadError(
+                                `Could not load audio/${file}. Put that file in public/audio/ or fix VITE_MEDIA_BASE_URL.`,
+                              );
+                            }}
+                            onLoadedData={() => setLoadError(null)}
+                            onPlay={() => {
+                              setPlayerVisible(true);
+                              resumeAfterHideRef.current = true;
+                              void resumeAudioGraph(audioRef.current!);
+                              void requestScreenWakeLock();
+                            }}
+                            onPause={() => {
+                              if (!document.hidden) {
+                                resumeAfterHideRef.current = false;
+                                void releaseScreenWakeLock();
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : null}
                     </Fragment>
                   );
                 })}
               </nav>
             </div>
-          </div>
-
-          <div className="player-container">
-            {loadError ? (
-              <p className="audio-load-error" role="alert">
-                {loadError}
-              </p>
-            ) : null}
-            <audio
-              ref={audioRef}
-              controls
-              crossOrigin={
-                mediaRequiresCrossOrigin() ? "anonymous" : undefined
-              }
-              preload="metadata"
-              onError={() => {
-                const file = TRACKS[currentIndexRef.current]?.file ?? "?";
-                setLoadError(
-                  `Could not load audio/${file}. Put that file in public/audio/ or fix VITE_MEDIA_BASE_URL.`,
-                );
-              }}
-              onLoadedData={() => setLoadError(null)}
-              onPlay={() => {
-                resumeAfterHideRef.current = true;
-                void resumeAudioGraph(audioRef.current!);
-                void requestScreenWakeLock();
-              }}
-              onPause={() => {
-                if (!document.hidden) {
-                  resumeAfterHideRef.current = false;
-                  void releaseScreenWakeLock();
-                }
-              }}
-            />
           </div>
         </div>
 
