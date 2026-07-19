@@ -3,17 +3,14 @@ export function BandBio() {
     <div className="members-content">
       <video
         className="members-video"
+        src="/members.mp4"
         autoPlay
         loop
         muted
         playsInline
         preload="metadata"
         aria-label="Severed Head Sunday members video"
-      >
-        <source src="/members.mp4" type="video/mp4" />
-        <source src="/members.mov" />
-        Your browser does not support embedded video.
-      </video>
+      />
 
       <div className="member-list">
         <section className="member-card">

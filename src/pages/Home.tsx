@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { AudioVisualizer } from "../components/AudioVisualizer";
+import { SessionLog } from "../components/SessionLog";
 import { BandBio } from "../content/BandBio";
 import { resumeAudioGraph } from "../audioGraph";
 import {
@@ -122,8 +123,55 @@ export function Home() {
             <h1 className="site-title">SEVERED HEAD SUNDAY</h1>
           </div>
 
-          <div className="viz-frame">
-            <AudioVisualizer audioRef={audioRef} isPlayingContext={vizReady} />
+          <div className="stage-row">
+            <div className="stage-board">
+              <div className="viz-frame viz-frame--compact">
+                <AudioVisualizer
+                  audioRef={audioRef}
+                  isPlayingContext={vizReady}
+                />
+              </div>
+              <SessionLog />
+            </div>
+
+            <div className="track-sidebar">
+              <button
+                type="button"
+                className={`nav-tab ${membersOpen ? "nav-tab--active" : ""}`}
+                aria-expanded={membersOpen}
+                aria-controls="members-panel"
+                id="members-toggle"
+                onClick={() => setMembersOpen((open) => !open)}
+              >
+                MEMBERS
+              </button>
+
+              <nav className="track-list" aria-label="Track playlist">
+                {TRACKS.map((track, index) => {
+                  const prev = TRACKS[index - 1];
+                  const showSectionHeading =
+                    index === 0 || track.section !== prev.section;
+                  return (
+                    <Fragment key={track.slug}>
+                      {showSectionHeading ? (
+                        <div
+                          className={`track-section-heading ${track.section === "jams" ? "track-section-heading--jams" : ""}`}
+                        >
+                          {TRACK_SECTION_HEADING[track.section]}
+                        </div>
+                      ) : null}
+                      <button
+                        type="button"
+                        className={`track ${index === currentIndex ? "active-track" : ""}`}
+                        onClick={() => playTrack(index)}
+                      >
+                        {track.label}
+                      </button>
+                    </Fragment>
+                  );
+                })}
+              </nav>
+            </div>
           </div>
 
           <div className="player-container">
@@ -159,45 +207,6 @@ export function Home() {
               }}
             />
           </div>
-        </div>
-
-        <div className="track-sidebar">
-          <button
-            type="button"
-            className={`nav-tab ${membersOpen ? "nav-tab--active" : ""}`}
-            aria-expanded={membersOpen}
-            aria-controls="members-panel"
-            id="members-toggle"
-            onClick={() => setMembersOpen((open) => !open)}
-          >
-            MEMBERS
-          </button>
-
-          <nav className="track-list" aria-label="Track playlist">
-            {TRACKS.map((track, index) => {
-              const prev = TRACKS[index - 1];
-              const showSectionHeading =
-                index === 0 || track.section !== prev.section;
-              return (
-                <Fragment key={track.slug}>
-                  {showSectionHeading ? (
-                    <div
-                      className={`track-section-heading ${track.section === "jams" ? "track-section-heading--jams" : ""}`}
-                    >
-                      {TRACK_SECTION_HEADING[track.section]}
-                    </div>
-                  ) : null}
-                  <button
-                    type="button"
-                    className={`track ${index === currentIndex ? "active-track" : ""}`}
-                    onClick={() => playTrack(index)}
-                  >
-                    {track.label}
-                  </button>
-                </Fragment>
-              );
-            })}
-          </nav>
         </div>
 
         {membersOpen ? (
