@@ -463,7 +463,7 @@ button.session-cell {
   cursor: pointer;
   font-size: 0.85rem;
   text-transform: uppercase;
-  color: #444;
+  color: #bbb;
   transition: 0.3s;
   letter-spacing: 2px;
   text-align: left;
