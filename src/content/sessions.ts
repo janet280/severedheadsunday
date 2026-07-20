@@ -22,7 +22,7 @@ export const SESSIONS: BandSession[] = [
     dateLabel: "JUL 6, 2026",
     material: "MENOEVIL",
     notes:
-      "Swollen pantickles and sweet prune nector.  raw and wriggly as it were. seeps and festers.",
+      "Swollen pantickles and sweet prune necter. Raw and wriggly standing up straight. Seeps and festers.",
     trackSlug: "menoevil",
     vizMode: "fireflies",
   },
@@ -42,7 +42,7 @@ export const SESSIONS: BandSession[] = [
     dateLabel: "JUN 15, 2026",
     material: "BEACH DAY (bass DI + reamp)",
     notes:
-      "Batten the hatches, clear all the morings, close the record shop and all the shops in the mall",
+      "Batten the hatches, clear all the moorings, close the record shop and all the shops in the mall!",
     trackSlug: "beach-day",
   },
   {
@@ -60,7 +60,7 @@ export const SESSIONS: BandSession[] = [
     dateLabel: "JUN 1, 2026",
     material: "BABADOOSHKA",
     notes:
-      "Charming and well liked, they made those with no ears screech and hallow.  incarnation, desecration. blend and piecemeal.",
+      "Charming and well liked, they made those with no ears screech and hallow. Incarnation, desecration. Blend and piecemeal.",
     trackSlug: "babadooshka",
   },
 ];
