@@ -31,7 +31,6 @@ export function Home() {
   const currentIndexRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [vizReady, setVizReady] = useState(false);
-  const [playerVisible, setPlayerVisible] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [vizModeOverride, setVizModeOverride] = useState<VizMode | null>(null);
@@ -152,20 +151,12 @@ export function Home() {
           </div>
 
           <div className="stage-row">
-            <div className="stage-board">
-              <AudioVisualizer
-                audioRef={audioRef}
-                isPlayingContext={vizReady}
-                trackKey={currentIndex}
-                modeOverride={vizModeOverride}
-              />
-              <SessionLog
-                onSelectSession={playSession}
-                activeTrackSlug={
-                  vizReady ? TRACKS[currentIndex]?.slug ?? null : null
-                }
-              />
-            </div>
+            <AudioVisualizer
+              audioRef={audioRef}
+              isPlayingContext={vizReady}
+              trackKey={currentIndex}
+              modeOverride={vizModeOverride}
+            />
 
             <div className="track-sidebar">
               <button
@@ -204,9 +195,7 @@ export function Home() {
                         {track.label}
                       </button>
                       {isActive && vizReady ? (
-                        <div
-                          className={`player-container player-container--inline${playerVisible ? "" : " player-container--pending"}`}
-                        >
+                        <div className="player-container player-container--inline">
                           {loadError ? (
                             <p className="audio-load-error" role="alert">
                               {loadError}
@@ -214,7 +203,8 @@ export function Home() {
                           ) : null}
                           <audio
                             ref={audioRef}
-                            controls={playerVisible}
+                            controls
+                            playsInline
                             crossOrigin={
                               mediaRequiresCrossOrigin()
                                 ? "anonymous"
@@ -230,7 +220,6 @@ export function Home() {
                             }}
                             onLoadedData={() => setLoadError(null)}
                             onPlay={() => {
-                              setPlayerVisible(true);
                               resumeAfterHideRef.current = true;
                               void resumeAudioGraph(audioRef.current!);
                               void requestScreenWakeLock();
@@ -249,6 +238,13 @@ export function Home() {
                 })}
               </nav>
             </div>
+
+            <SessionLog
+              onSelectSession={playSession}
+              activeTrackSlug={
+                vizReady ? TRACKS[currentIndex]?.slug ?? null : null
+              }
+            />
           </div>
         </div>
 

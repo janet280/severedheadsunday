@@ -147,17 +147,22 @@ body::after {
 .stage-row {
   display: grid;
   grid-template-columns: 1fr minmax(160px, 260px);
+  grid-template-areas:
+    "viz tracks"
+    "sessions tracks";
   gap: 24px;
   align-items: start;
   width: 100%;
 }
 
 .track-sidebar {
+  grid-area: tracks;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   margin-top: 0;
   min-width: 0;
+  width: 100%;
 }
 
 .track-sidebar .nav-tab {
@@ -165,13 +170,9 @@ body::after {
   align-self: flex-start;
 }
 
-.stage-board {
-  width: 100%;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 16px;
+.viz-frame,
+.viz-frame--compact {
+  grid-area: viz;
 }
 
 .viz-frame {
@@ -267,6 +268,7 @@ body::after {
 }
 
 .session-log {
+  grid-area: sessions;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -405,15 +407,6 @@ button.session-cell {
   background: rgba(0, 0, 0, 0.35);
 }
 
-.player-container--pending {
-  height: 0;
-  margin: 0;
-  padding: 0;
-  border: none;
-  overflow: hidden;
-  pointer-events: none;
-}
-
 .audio-load-error {
   margin: 0;
   padding: 10px 12px;
@@ -426,8 +419,9 @@ button.session-cell {
 
 .player-container audio {
   width: 100%;
-  height: 32px;
-  filter: invert(1) grayscale(1) opacity(0.55);
+  min-height: 40px;
+  height: 40px;
+  filter: invert(1) grayscale(1) opacity(0.7);
 }
 
 .track-list {
@@ -578,11 +572,6 @@ button.session-cell {
     gap: 14px;
   }
 
-  /* Flatten so viz → playlist → sessions on mobile (playlist visible sooner). */
-  .stage-board {
-    display: contents;
-  }
-
   .viz-frame,
   .viz-frame--compact {
     order: 1;
@@ -597,10 +586,17 @@ button.session-cell {
   .track-sidebar {
     order: 2;
     margin-top: 0;
+    width: 100%;
   }
 
   .session-log {
     order: 3;
+    width: 100%;
+  }
+
+  .track-list {
+    width: 100%;
+    margin-top: 12px;
   }
 
   .header-container {
@@ -645,8 +641,19 @@ button.session-cell {
     font-size: 0.8rem;
   }
 
-  .player-container {
-    margin-top: 14px;
+  .player-container,
+  .player-container--inline {
+    margin-top: 0;
+    width: 100%;
+    padding: 10px 12px 12px;
+  }
+
+  /* Native controls break under CSS filters on iOS Safari */
+  .player-container audio {
+    filter: none;
+    opacity: 1;
+    min-height: 48px;
+    height: 48px;
   }
 
   .track-section-heading {
