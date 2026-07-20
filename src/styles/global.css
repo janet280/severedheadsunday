@@ -81,11 +81,6 @@ body::after {
   z-index: 10;
 }
 
-.main-layout--members-open {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 400px);
-  max-width: 1500px;
-}
-
 .center-stage {
   display: flex;
   flex-direction: column;
@@ -485,10 +480,17 @@ button.session-cell {
   background: rgba(0, 0, 0, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 50px rgba(255, 0, 0, 0.08);
-  margin-top: calc(clamp(2.2rem, 5vw, 4.5rem) + 20px);
+  margin-top: 0;
   padding: 22px 20px 28px;
   max-height: min(70vh, 640px);
   overflow-y: auto;
+}
+
+.members-panel--inline {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  width: 100%;
+  max-height: min(55vh, 480px);
 }
 
 .members-panel-title {
@@ -682,12 +684,13 @@ button.session-cell {
   .track-list {
     margin-top: 8px;
     width: 100%;
-    border-radius: 2px;
   }
 
-  .members-panel {
-    margin-top: 16px;
-    max-height: none;
+  .members-panel,
+  .members-panel--inline {
+    margin-top: 12px;
+    margin-bottom: 8px;
+    max-height: min(50vh, 420px);
     width: 100%;
     padding: 18px 16px 22px;
   }

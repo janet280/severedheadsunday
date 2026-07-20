@@ -124,12 +124,7 @@ export function Home() {
     return () => audio.removeEventListener("ended", onEnded);
   }, [playTrack, vizReady, currentIndex]);
 
-  const layoutClass = [
-    "main-layout",
-    membersOpen ? "main-layout--members-open" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const layoutClass = "main-layout";
 
   return (
     <>
@@ -169,6 +164,18 @@ export function Home() {
               >
                 MEMBERS
               </button>
+
+              {membersOpen ? (
+                <aside
+                  className="members-panel members-panel--inline"
+                  id="members-panel"
+                  role="region"
+                  aria-labelledby="members-toggle"
+                >
+                  <h2 className="members-panel-title">MEMBERS</h2>
+                  <BandBio />
+                </aside>
+              ) : null}
 
               <nav className="track-list" aria-label="Track playlist">
                 {TRACKS.map((track, index) => {
@@ -247,18 +254,6 @@ export function Home() {
             />
           </div>
         </div>
-
-        {membersOpen ? (
-          <aside
-            className="members-panel"
-            id="members-panel"
-            role="region"
-            aria-labelledby="members-toggle"
-          >
-            <h2 className="members-panel-title">MEMBERS</h2>
-            <BandBio />
-          </aside>
-        ) : null}
       </div>
     </>
   );
