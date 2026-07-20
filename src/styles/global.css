@@ -146,7 +146,7 @@ body::after {
 
 .stage-row {
   display: grid;
-  grid-template-columns: 1fr minmax(140px, 220px);
+  grid-template-columns: 1fr minmax(160px, 260px);
   gap: 24px;
   align-items: start;
   width: 100%;
@@ -430,7 +430,7 @@ body::after {
 }
 
 .track {
-  padding: 18px 4px 18px 15px;
+  padding: 20px 8px 20px 15px;
   border-bottom: 1px solid #111;
   cursor: pointer;
   font-size: 0.85rem;
@@ -620,8 +620,8 @@ body::after {
   }
 
   .track {
-    padding: 16px 2px 16px 14px;
-    min-height: 48px;
+    padding: 18px 8px 18px 14px;
+    min-height: 52px;
     font-size: 0.8rem;
     letter-spacing: 1.5px;
     display: flex;
