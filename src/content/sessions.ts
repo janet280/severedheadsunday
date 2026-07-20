@@ -22,9 +22,9 @@ export const SESSIONS: BandSession[] = [
     id: "2026-07-06",
     date: "2026-07-06",
     dateLabel: "JUL 6, 2026",
-    material: "MOONROCKS (outro noise bed)",
+    material: "MENOEVIL",
     notes:
-      "Guitar string snapped mid-take; we kept the tape rolling. Drums fought the click for twenty minutes. Someone definitely farted during the quiet part.",
+      "Guitar string snapped mid-take; ",
   },
   {
     id: "2026-06-29",

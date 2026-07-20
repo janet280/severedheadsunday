@@ -1,4 +1,4 @@
-export type TrackSection = "studio" | "jams";
+export type TrackSection = "studio" | "sessions";
 
 export type Track = {
   slug: string;
@@ -9,7 +9,7 @@ export type Track = {
 
 export const TRACK_SECTION_HEADING: Record<TrackSection, string> = {
   studio: "STUDIO",
-  jams: "JAMS",
+  sessions: "SESSIONS",
 };
 
 export const TRACKS: Track[] = [
@@ -41,31 +41,31 @@ export const TRACKS: Track[] = [
     slug: "menoevil",
     label: "MeNoEVIL",
     file: "menoevil.mp3",
-    section: "jams",
+    section: "sessions",
   },
   {
     slug: "babadooshka",
     label: "BABADOOSHKA",
     file: "babadooshka.mp3",
-    section: "jams",
+    section: "sessions",
   },
   {
     slug: "beach-day",
     label: "BEACH DAY",
     file: "beachday.mp3",
-    section: "jams",
+    section: "sessions",
   },
   {
     slug: "smother",
     label: "SMOTHER",
     file: "smother.mp3",
-    section: "jams",
+    section: "sessions",
   },
   {
     slug: "funkeymother",
     label: "FUNKEYMOTHER",
     file: "funkeymother.mp3",
-    section: "jams",
+    section: "sessions",
   },
 ];
 

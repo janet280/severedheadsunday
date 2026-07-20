@@ -423,7 +423,7 @@ body::after {
   user-select: none;
 }
 
-.track-section-heading--jams {
+.track-section-heading--sessions {
   margin-top: 6px;
   padding-top: 20px;
   border-top: 1px solid #1a1a1a;
@@ -615,7 +615,7 @@ body::after {
     letter-spacing: 3px;
   }
 
-  .track-section-heading--jams {
+  .track-section-heading--sessions {
     padding-top: 18px;
   }
 

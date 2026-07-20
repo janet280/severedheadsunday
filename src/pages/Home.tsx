@@ -161,7 +161,7 @@ export function Home() {
                     <Fragment key={track.slug}>
                       {showSectionHeading ? (
                         <div
-                          className={`track-section-heading ${track.section === "jams" ? "track-section-heading--jams" : ""}`}
+                          className={`track-section-heading ${track.section === "sessions" ? "track-section-heading--sessions" : ""}`}
                         >
                           {TRACK_SECTION_HEADING[track.section]}
                         </div>
