@@ -1,7 +1,12 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { AudioVisualizer } from "../components/AudioVisualizer";
+import {
+  AudioVisualizer,
+  pickRandomVizMode,
+  type VizMode,
+} from "../components/AudioVisualizer";
 import { SessionLog } from "../components/SessionLog";
 import { BandBio } from "../content/BandBio";
+import type { BandSession } from "../content/sessions";
 import { resumeAudioGraph } from "../audioGraph";
 import {
   refreshWakeLockIfPlaying,
@@ -12,6 +17,7 @@ import {
 import {
   TRACKS,
   TRACK_SECTION_HEADING,
+  findTrackIndexBySlug,
   mediaRequiresCrossOrigin,
   resolveAudioUrl,
 } from "../tracks";
@@ -28,20 +34,32 @@ export function Home() {
   const [playerVisible, setPlayerVisible] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [vizModeOverride, setVizModeOverride] = useState<VizMode | null>(null);
 
   const bgUrl =
     import.meta.env.VITE_BACKGROUND_IMAGE_URL?.trim() ||
     "";
 
-  const playTrack = useCallback((index: number) => {
+  const playTrack = useCallback((index: number, mode?: VizMode) => {
     let next = index;
     if (next >= TRACKS.length) next = 0;
     if (next < 0) next = TRACKS.length - 1;
+    if (mode) setVizModeOverride(mode);
     setCurrentIndex(next);
     currentIndexRef.current = next;
     setLoadError(null);
     setVizReady(true);
   }, []);
+
+  const playSession = useCallback(
+    (session: BandSession) => {
+      if (!session.trackSlug) return;
+      const index = findTrackIndexBySlug(session.trackSlug);
+      if (index < 0) return;
+      playTrack(index, session.vizMode ?? pickRandomVizMode());
+    },
+    [playTrack],
+  );
 
   useEffect(() => {
     if (!vizReady) return;
@@ -98,7 +116,11 @@ export function Home() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onEnded = () => playTrack(currentIndexRef.current + 1);
+    const onEnded = () => {
+      const next = currentIndexRef.current + 1;
+      const nextIndex = next >= TRACKS.length ? 0 : next;
+      playTrack(nextIndex, TRACKS[nextIndex]?.vizMode);
+    };
     audio.addEventListener("ended", onEnded);
     return () => audio.removeEventListener("ended", onEnded);
   }, [playTrack, vizReady, currentIndex]);
@@ -135,8 +157,14 @@ export function Home() {
                 audioRef={audioRef}
                 isPlayingContext={vizReady}
                 trackKey={currentIndex}
+                modeOverride={vizModeOverride}
               />
-              <SessionLog />
+              <SessionLog
+                onSelectSession={playSession}
+                activeTrackSlug={
+                  vizReady ? TRACKS[currentIndex]?.slug ?? null : null
+                }
+              />
             </div>
 
             <div className="track-sidebar">
@@ -169,7 +197,9 @@ export function Home() {
                       <button
                         type="button"
                         className={`track ${isActive && vizReady ? "active-track" : ""}`}
-                        onClick={() => playTrack(index)}
+                        onClick={() =>
+                          playTrack(index, TRACKS[index]?.vizMode)
+                        }
                       >
                         {track.label}
                       </button>
