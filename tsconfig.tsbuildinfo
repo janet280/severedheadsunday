@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/audiograph.ts","./src/audiokeepalive.ts","./src/main.tsx","./src/tracks.ts","./src/vite-env.d.ts","./src/components/audiovisualizer.tsx","./src/content/bandbio.tsx","./src/pages/home.tsx"],"version":"5.8.3"}
+{"root":["./src/app.tsx","./src/audiograph.ts","./src/audiokeepalive.ts","./src/main.tsx","./src/tracks.ts","./src/vite-env.d.ts","./src/components/audiovisualizer.tsx","./src/components/sessionlog.tsx","./src/content/bandbio.tsx","./src/content/sessions.ts","./src/pages/home.tsx"],"version":"5.8.3"}

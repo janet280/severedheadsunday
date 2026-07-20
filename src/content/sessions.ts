@@ -13,10 +13,10 @@ export const SESSIONS: BandSession[] = [
   {
     id: "2026-07-13",
     date: "2026-07-13",
-    dateLabel: "JUL 13, 2026",
-    material: "LEDERHOSEN (bridge rewrite)",
+    dateLabel: "JUL 18, 2026",
+    material: "NEWSONG (bridge rewrite)",
     notes:
-      "Tried the new bridge at half speed, then forgot the count and ran it at full chaos. Snack of choice: gas-station taquitos and a shared orange soda.",
+      "Bad jokes, guitar and bass going crazy and chartutery board",
   },
   {
     id: "2026-07-06",
