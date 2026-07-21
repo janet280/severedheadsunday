@@ -15,20 +15,17 @@ export function BandBio() {
       <div className="member-list">
         <section className="member-card">
           <h3>VICTOR IBARRA</h3>
-          <p>He's been called many things, short is not one of them.</p>
+          <p>Bass Guitar | Saxaphone | Vocals </p>
         </section>
 
         <section className="member-card">
           <h3>GABE SANCHEZ</h3>
-          <p>Gabe started as a small child with strings around the trees.</p>
+          <p>Guitar | Vocals</p>
         </section>
 
         <section className="member-card">
           <h3>Jante Jones</h3>
-          <p>
-            People are still confused on his name. He's the whitiest of the
-            whiteness but people still think he is French.
-          </p>
+          <p>Drums | Vocals</p>
         </section>
       </div>
     </div>
