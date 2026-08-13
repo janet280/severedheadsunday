@@ -20,18 +20,18 @@ export const TRACK_SECTION_HEADING: Record<TrackSection, string> = {
 /** Studio cuts — may also appear in the session log. */
 const STUDIO_TRACKS: Track[] = [
   {
-    slug: "severed-head-sunday",
-    label: "SEVERED HEAD SUNDAY",
-    file: "severed_head_sunday.mp3",
-    section: "studio",
-    vizMode: "spikes",
-  },
-  {
     slug: "moonrocks",
     label: "MOONROCKS",
     file: "moonrocks.mp3",
     section: "studio",
     vizMode: "rings",
+  },
+  {
+    slug: "severed-head-sunday",
+    label: "SEVERED HEAD SUNDAY",
+    file: "severed_head_sunday.mp3",
+    section: "studio",
+    vizMode: "spikes",
   },
   {
     slug: "lederhosen",
