@@ -1,6 +1,6 @@
 # Severed Head Sunday — site
 
-React (Vite + TypeScript) single-page app modeled on [severedheadsunday.band](https://severedheadsunday.band/index.html): dark alley backdrop, canvas audio visualizer, playlist, and an on-page **MEMBERS** column (bio panel; audio keeps playing).
+React (Vite + TypeScript) single-page app modeled on [severedheadsunday.band](https://severedheadsunday.band/index.html): dark alley backdrop, canvas audio visualizer, playlist, and a persistent looping members video.
 
 ## Local development
 

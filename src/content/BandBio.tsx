@@ -8,7 +8,7 @@ export function BandBio() {
         loop
         muted
         playsInline
-        preload="metadata"
+        preload="auto"
         aria-label="Severed Head Sunday members video"
       />
 

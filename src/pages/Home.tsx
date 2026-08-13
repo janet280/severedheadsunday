@@ -21,6 +21,7 @@ import {
   mediaRequiresCrossOrigin,
   resolveAudioUrl,
 } from "../tracks";
+import { SITE_VERSION_LABEL } from "../version";
 
 const GRAIN_TEXTURE =
   "https://www.transparenttextures.com/patterns/asfalt-dark.png";
@@ -31,7 +32,6 @@ export function Home() {
   const currentIndexRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [vizReady, setVizReady] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [vizModeOverride, setVizModeOverride] = useState<VizMode | null>(null);
 
@@ -48,6 +48,25 @@ export function Home() {
     currentIndexRef.current = next;
     setLoadError(null);
     setVizReady(true);
+
+    const audio = audioRef.current;
+    const track = TRACKS[next];
+    if (audio && track) {
+      const url = resolveAudioUrl(track.file);
+      if (
+        !audio.currentSrc.includes(track.file) &&
+        !audio.src.includes(track.file)
+      ) {
+        audio.src = url;
+        audio.load();
+      }
+      void audio
+        .play()
+        .then(() => requestScreenWakeLock())
+        .catch(() => {
+          /* autoplay policies — playlist / idle click still count as gestures */
+        });
+    }
   }, []);
 
   const playSession = useCallback(
@@ -69,8 +88,12 @@ export function Home() {
     if (!track) return;
 
     const url = resolveAudioUrl(track.file);
-    audio.src = url;
-    audio.load();
+    const alreadyThisTrack =
+      audio.currentSrc.includes(track.file) || audio.src.includes(track.file);
+    if (!alreadyThisTrack) {
+      audio.src = url;
+      audio.load();
+    }
     void audio
       .play()
       .then(() => requestScreenWakeLock())
@@ -151,31 +174,16 @@ export function Home() {
               isPlayingContext={vizReady}
               trackKey={currentIndex}
               modeOverride={vizModeOverride}
+              onIdlePlay={() => playTrack(0, TRACKS[0]?.vizMode)}
             />
 
             <div className="track-sidebar">
-              <button
-                type="button"
-                className={`nav-tab ${membersOpen ? "nav-tab--active" : ""}`}
-                aria-expanded={membersOpen}
-                aria-controls="members-panel"
-                id="members-toggle"
-                onClick={() => setMembersOpen((open) => !open)}
+              <aside
+                className="members-panel members-panel--inline"
+                aria-label="Band members"
               >
-                MEMBERS
-              </button>
-
-              {membersOpen ? (
-                <aside
-                  className="members-panel members-panel--inline"
-                  id="members-panel"
-                  role="region"
-                  aria-labelledby="members-toggle"
-                >
-                  <h2 className="members-panel-title">MEMBERS</h2>
-                  <BandBio />
-                </aside>
-              ) : null}
+                <BandBio />
+              </aside>
 
               <nav className="track-list" aria-label="Track playlist">
                 {TRACKS.map((track, index) => {
@@ -201,16 +209,22 @@ export function Home() {
                       >
                         {track.label}
                       </button>
-                      {isActive && vizReady ? (
-                        <div className="player-container player-container--inline">
-                          {loadError ? (
+                      {index === currentIndex ? (
+                        <div
+                          className={
+                            vizReady
+                              ? "player-container player-container--inline"
+                              : "player-container--idle"
+                          }
+                        >
+                          {vizReady && loadError ? (
                             <p className="audio-load-error" role="alert">
                               {loadError}
                             </p>
                           ) : null}
                           <audio
                             ref={audioRef}
-                            controls
+                            controls={vizReady}
                             playsInline
                             crossOrigin={
                               mediaRequiresCrossOrigin()
@@ -255,6 +269,10 @@ export function Home() {
           </div>
         </div>
       </div>
+
+      <p className="site-version" aria-label={`Site version ${SITE_VERSION_LABEL}`}>
+        {SITE_VERSION_LABEL}
+      </p>
     </>
   );
 }

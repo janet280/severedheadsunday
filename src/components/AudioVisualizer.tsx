@@ -8,6 +8,8 @@ type Props = {
   trackKey?: number;
   /** When set, switches the active visualization mode. */
   modeOverride?: VizMode | null;
+  /** Start playback from an idle visualizer click (user gesture). */
+  onIdlePlay?: () => void;
 };
 
 export type VizMode = "rings" | "wave" | "spikes" | "fireflies" | "rush";
@@ -236,6 +238,24 @@ function drawRush(
   vig.addColorStop(1, "rgba(0,0,0,0.55)");
   ctx.fillStyle = vig;
   ctx.fillRect(0, 0, w, h);
+}
+
+function fillIdleFreq(out: Uint8Array, t: number) {
+  for (let i = 0; i < out.length; i++) {
+    const bass = 0.5 + 0.5 * Math.sin(t * 0.85);
+    const wobble = 0.5 + 0.5 * Math.sin(t * 0.18 + i * 0.06);
+    out[i] = Math.floor(
+      24 + bass * 52 + wobble * 40 * Math.exp(-i / 22),
+    );
+  }
+}
+
+function fillIdleTime(out: Uint8Array, t: number) {
+  for (let i = 0; i < out.length; i++) {
+    const v =
+      Math.sin(t * 2.1 + i * 0.11) * 16 + Math.sin(t * 0.65 + i * 0.03) * 8;
+    out[i] = Math.floor(128 + v);
+  }
 }
 
 function getFullscreenElement(): Element | null {
@@ -551,6 +571,7 @@ export function AudioVisualizer({
   isPlayingContext,
   trackKey = 0,
   modeOverride = null,
+  onIdlePlay,
 }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -631,28 +652,31 @@ export function AudioVisualizer({
   }, []);
 
   useEffect(() => {
-    if (!isPlayingContext) return;
     const canvas = canvasRef.current;
-    const audio = audioRef.current;
-    if (!canvas || !audio) return;
+    if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const { audioCtx, analyser } = getOrCreateAudioGraph(audio);
-    const freqData = new Uint8Array(analyser.frequencyBinCount);
-    const timeData = new Uint8Array(analyser.fftSize);
+    const audio = audioRef.current;
+    const live =
+      isPlayingContext && audio
+        ? getOrCreateAudioGraph(audio)
+        : null;
+    if (live) void live.audioCtx.resume();
 
-    void audioCtx.resume();
+    const freqData = new Uint8Array(live?.analyser.frequencyBinCount ?? 128);
+    const timeData = new Uint8Array(live?.analyser.fftSize ?? 256);
+    const startedAt = performance.now();
 
     const draw = () => {
       animFrameRef.current = requestAnimationFrame(draw);
       const w = canvas.width;
       const h = canvas.height;
       const currentMode = modeRef.current;
+      const t = (performance.now() - startedAt) / 1000;
 
       if (currentMode === "fireflies") {
-        // Near-black field; very slow fade = long acid trails
         ctx.fillStyle = "rgba(0, 0, 0, 0.045)";
         ctx.fillRect(0, 0, w, h);
       } else if (currentMode === "rush") {
@@ -666,18 +690,28 @@ export function AudioVisualizer({
       hueRef.current = (hueRef.current + 0.4) % 360;
       const hue = hueRef.current;
 
+      if (live) {
+        if (currentMode === "wave") {
+          live.analyser.getByteTimeDomainData(timeData);
+        } else {
+          live.analyser.getByteFrequencyData(freqData);
+        }
+      } else if (currentMode === "wave") {
+        fillIdleTime(timeData, t);
+      } else {
+        fillIdleFreq(freqData, t);
+      }
+
       if (currentMode === "wave") {
-        analyser.getByteTimeDomainData(timeData);
         drawWave(ctx, timeData, w, h, hue);
       } else if (currentMode === "rush") {
-        analyser.getByteFrequencyData(freqData);
         drawRush(ctx, freqData, w, h, rushRef.current);
+      } else if (currentMode === "spikes") {
+        drawSpikes(ctx, freqData, w, h, hue);
+      } else if (currentMode === "fireflies") {
+        drawFireflies(ctx, freqData, w, h, firefliesRef.current);
       } else {
-        analyser.getByteFrequencyData(freqData);
-        if (currentMode === "spikes") drawSpikes(ctx, freqData, w, h, hue);
-        else if (currentMode === "fireflies")
-          drawFireflies(ctx, freqData, w, h, firefliesRef.current);
-        else drawRings(ctx, freqData, w, h, hue);
+        drawRings(ctx, freqData, w, h, hue);
       }
     };
 
@@ -698,6 +732,20 @@ export function AudioVisualizer({
       data-viz-mode={mode}
     >
       <canvas ref={canvasRef} className="visualizer-canvas" />
+      {!isPlayingContext && onIdlePlay ? (
+        <button
+          type="button"
+          className="viz-idle-play"
+          onClick={onIdlePlay}
+          aria-label="Play"
+        >
+          <span className="viz-idle-play-btn" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M8 5.5v13l11-6.5z" />
+            </svg>
+          </span>
+        </button>
+      ) : null}
       <div className="viz-controls">
         <button
           type="button"

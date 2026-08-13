@@ -30,6 +30,21 @@ body {
   -webkit-tap-highlight-color: rgba(255, 255, 255, 0.08);
 }
 
+.site-version {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  z-index: 101;
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: lowercase;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+  user-select: none;
+}
+
 body::after {
   content: "";
   position: fixed;
@@ -109,36 +124,6 @@ body::after {
   text-align: center;
 }
 
-.nav-tab {
-  position: absolute;
-  right: 0;
-  left: auto;
-  margin: 0;
-  text-decoration: none;
-  color: #fff;
-  font-size: 0.75rem;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: 3px;
-  padding: 5px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: 0.3s;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.nav-tab:hover {
-  background: #fff;
-  color: #000;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-}
-
-.nav-tab--active {
-  border-color: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 0 12px rgba(255, 0, 0, 0.15);
-}
-
 .stage-row {
   display: grid;
   grid-template-columns: 1fr minmax(160px, 260px);
@@ -158,11 +143,6 @@ body::after {
   margin-top: 0;
   min-width: 0;
   width: 100%;
-}
-
-.track-sidebar .nav-tab {
-  position: static;
-  align-self: flex-start;
 }
 
 .viz-frame,
@@ -200,6 +180,52 @@ body::after {
   border: none;
   background: #000;
   box-shadow: none;
+}
+
+.viz-idle-play {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.viz-idle-play-btn {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 18px rgba(255, 0, 0, 0.18);
+}
+
+.viz-idle-play-btn svg {
+  width: 34px;
+  height: 34px;
+  margin-left: 4px;
+  fill: #fff;
+  filter: drop-shadow(2px 2px 0 #660000);
+}
+
+.viz-idle-play:hover .viz-idle-play-btn {
+  background: #fff;
+  border-color: #fff;
+}
+
+.viz-idle-play:hover .viz-idle-play-btn svg {
+  fill: #000;
+  filter: none;
 }
 
 .viz-controls {
@@ -402,6 +428,18 @@ button.session-cell {
   background: rgba(0, 0, 0, 0.35);
 }
 
+.player-container--idle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .audio-load-error {
   margin: 0;
   padding: 10px 12px;
@@ -487,21 +525,11 @@ button.session-cell {
 }
 
 .members-panel--inline {
-  margin-top: 12px;
+  margin-top: 0;
   margin-bottom: 8px;
   width: 100%;
   max-height: none;
   overflow: visible;
-}
-
-.members-panel-title {
-  letter-spacing: 2px;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  color: #ff0000;
-  margin: 0 0 10px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid #ff0000;
 }
 
 .members-content {
@@ -562,10 +590,6 @@ button.session-cell {
     padding-bottom: 8px;
   }
 
-  .main-layout--members-open {
-    grid-template-columns: 1fr;
-  }
-
   .center-stage {
     width: 100%;
     max-width: 100%;
@@ -616,20 +640,6 @@ button.session-cell {
     letter-spacing: -2px;
     line-height: 1.05;
     padding: 0 4px;
-  }
-
-  .nav-tab {
-    position: static;
-    align-self: flex-end;
-    min-height: 44px;
-    padding: 10px 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .track-sidebar .nav-tab {
-    align-self: flex-end;
   }
 
   .session-log-scroll {
@@ -699,11 +709,6 @@ button.session-cell {
     padding: 12px 12px 14px;
   }
 
-  .members-panel-title {
-    font-size: 0.8rem;
-    margin-bottom: 8px;
-  }
-
   .members-video {
     max-width: 140px;
   }
@@ -757,14 +762,23 @@ button.session-cell {
     text-shadow: 0 0 8px #ff0000;
   }
 
-  .nav-tab:hover {
-    background: transparent;
-    color: #fff;
-    box-shadow: none;
+  .viz-idle-play:hover .viz-idle-play-btn {
+    background: rgba(0, 0, 0, 0.55);
+    border-color: rgba(255, 255, 255, 0.45);
   }
 
-  .nav-tab:active {
+  .viz-idle-play:hover .viz-idle-play-btn svg {
+    fill: #fff;
+    filter: drop-shadow(2px 2px 0 #660000);
+  }
+
+  .viz-idle-play:active .viz-idle-play-btn {
     background: #fff;
-    color: #000;
+    border-color: #fff;
+  }
+
+  .viz-idle-play:active .viz-idle-play-btn svg {
+    fill: #000;
+    filter: none;
   }
 }
