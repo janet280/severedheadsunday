@@ -48,6 +48,25 @@ export function Home() {
     currentIndexRef.current = next;
     setLoadError(null);
     setVizReady(true);
+
+    const audio = audioRef.current;
+    const track = TRACKS[next];
+    if (audio && track) {
+      const url = resolveAudioUrl(track.file);
+      if (
+        !audio.currentSrc.includes(track.file) &&
+        !audio.src.includes(track.file)
+      ) {
+        audio.src = url;
+        audio.load();
+      }
+      void audio
+        .play()
+        .then(() => requestScreenWakeLock())
+        .catch(() => {
+          /* autoplay policies — playlist / idle click still count as gestures */
+        });
+    }
   }, []);
 
   const playSession = useCallback(
@@ -69,8 +88,12 @@ export function Home() {
     if (!track) return;
 
     const url = resolveAudioUrl(track.file);
-    audio.src = url;
-    audio.load();
+    const alreadyThisTrack =
+      audio.currentSrc.includes(track.file) || audio.src.includes(track.file);
+    if (!alreadyThisTrack) {
+      audio.src = url;
+      audio.load();
+    }
     void audio
       .play()
       .then(() => requestScreenWakeLock())
@@ -151,6 +174,7 @@ export function Home() {
               isPlayingContext={vizReady}
               trackKey={currentIndex}
               modeOverride={vizModeOverride}
+              onIdlePlay={() => playTrack(0, TRACKS[0]?.vizMode)}
             />
 
             <div className="track-sidebar">
@@ -185,16 +209,22 @@ export function Home() {
                       >
                         {track.label}
                       </button>
-                      {isActive && vizReady ? (
-                        <div className="player-container player-container--inline">
-                          {loadError ? (
+                      {index === currentIndex ? (
+                        <div
+                          className={
+                            vizReady
+                              ? "player-container player-container--inline"
+                              : "player-container--idle"
+                          }
+                        >
+                          {vizReady && loadError ? (
                             <p className="audio-load-error" role="alert">
                               {loadError}
                             </p>
                           ) : null}
                           <audio
                             ref={audioRef}
-                            controls
+                            controls={vizReady}
                             playsInline
                             crossOrigin={
                               mediaRequiresCrossOrigin()
