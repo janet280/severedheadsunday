@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Put MP3s in **`public/audio/`** with these exact filenames (same as the original site): `moonrocks.mp3`, `lederhosen.mp3`, `menoevil.mp3`, `ginger.mp3`, `severed_head_sunday.mp3`, `babadooshka.mp3`, `beachday.mp3`, `smother.mp3`, `funkeymother.mp3`. You do **not** need `npm run build` for local dev — Vite serves `public/` as static files during `npm run dev`.
+Put MP3s in **`public/audio/`** with these exact filenames (same as the original site): `moonrocks.mp3`, `lederhosen.mp3`, `menoevil.mp3`, `ginger.mp3`, `severed_head_sunday.mp3`, `babadooshka.mp3`, `beachday.mp3`, `smother.mp3`, `funkeymother.mp3`, `potsandpans.mp3`. You do **not** need `npm run build` for local dev — Vite serves `public/` as static files during `npm run dev`.
 
 Optional `.env.local` (Git-ignored):
 
