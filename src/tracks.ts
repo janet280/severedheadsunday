@@ -31,7 +31,7 @@ const STUDIO_TRACKS: Track[] = [
     label: "SEVERED HEAD SUNDAY",
     file: "severed_head_sunday.mp3",
     section: "studio",
-    vizMode: "spikes",
+    vizMode: "slashed",
   },
   {
     slug: "lederhosen",
