@@ -300,8 +300,16 @@ body::after {
   height: 100%;
   object-fit: contain;
   background: #000;
-  display: block;
   z-index: 0;
+  pointer-events: none;
+}
+
+.viz-video--hidden {
+  display: none;
+}
+
+.viz-video--active {
+  display: block;
 }
 
 .session-log {

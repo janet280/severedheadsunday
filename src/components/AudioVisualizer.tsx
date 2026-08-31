@@ -591,8 +591,17 @@ export function AudioVisualizer({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (mode === "slashed" && videoRef.current) {
-      void videoRef.current.play().catch(() => {});
+    const video = videoRef.current;
+    if (!video) return;
+    if (mode === "slashed") {
+      video.muted = true;
+      video.defaultMuted = true;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {});
+      }
+    } else {
+      video.pause();
     }
   }, [mode]);
 
@@ -746,24 +755,35 @@ export function AudioVisualizer({
       data-viz-mode={mode}
     >
       <canvas ref={canvasRef} className="visualizer-canvas" />
-      {mode === "slashed" ? (
-        <video
-          ref={videoRef}
-          className="viz-video"
-          src="/SLASHED.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          aria-label="Severed Head Sunday visualizer video"
-        />
-      ) : null}
+      <video
+        ref={(el) => {
+          videoRef.current = el;
+          if (el) {
+            el.muted = true;
+            el.defaultMuted = true;
+          }
+        }}
+        className={`viz-video ${mode === "slashed" ? "viz-video--active" : "viz-video--hidden"}`}
+        src="/SLASHED.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        aria-label="Severed Head Sunday visualizer video"
+      />
       {!isPlayingContext && onIdlePlay ? (
         <button
           type="button"
           className="viz-idle-play"
-          onClick={onIdlePlay}
+          onClick={() => {
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.defaultMuted = true;
+              void videoRef.current.play().catch(() => {});
+            }
+            onIdlePlay();
+          }}
           aria-label="Play"
         >
           <span className="viz-idle-play-btn" aria-hidden="true">
