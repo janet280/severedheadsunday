@@ -51,6 +51,7 @@ const STUDIO_TRACKS: Track[] = [
 
 /** File names for session tracks (slug → mp3). */
 const SESSION_FILES: Record<string, string> = {
+  "tasteless-tongue": "tastelesstongue.mp3",
   "pots-and-pans": "potsandpans.mp3",
   menoevil: "menoevil.mp3",
   funkeymother: "funkeymother.mp3",
@@ -61,6 +62,7 @@ const SESSION_FILES: Record<string, string> = {
 
 /** Display labels for session tracks (slug → playlist label). */
 const SESSION_LABELS: Record<string, string> = {
+  "tasteless-tongue": "TASTELESS TONGUE",
   "pots-and-pans": "POTS AND PANS",
   menoevil: "MeNoEVIL",
   funkeymother: "FUNKEYMOTHER",
