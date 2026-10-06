@@ -21,7 +21,8 @@ export const SESSIONS: BandSession[] = [
     date: "2026-10-05",
     dateLabel: "OCT 5, 2026",
     material: "TASTELESS TONGUE",
-    notes: "When it hurts so bad it feels good",
+    notes:
+      "half child, half melon -- it swooped and swam low, barely brushing off it's layers to reveal shallow marks upon it's neck.",
     trackSlug: "tasteless-tongue",
   },
   {
