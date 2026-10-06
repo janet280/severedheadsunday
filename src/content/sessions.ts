@@ -17,6 +17,15 @@ export type BandSession = {
 /** Newest first — audio blog session log. Must match TRACKS with section "sessions". */
 export const SESSIONS: BandSession[] = [
   {
+    id: "2026-10-05",
+    date: "2026-10-05",
+    dateLabel: "OCT 5, 2026",
+    material: "TASTELESS TONGUE",
+    notes:
+      "half child, half melon -- it swooped and swam low, barely brushing off it's layers to reveal shallow marks upon it's neck.",
+    trackSlug: "tasteless-tongue",
+  },
+  {
     id: "2026-08-10",
     date: "2026-08-10",
     dateLabel: "AUG 10, 2026",

@@ -12,7 +12,7 @@ type Props = {
   onIdlePlay?: () => void;
 };
 
-export type VizMode = "rings" | "wave" | "spikes" | "fireflies" | "rush";
+export type VizMode = "rings" | "wave" | "spikes" | "fireflies" | "rush" | "slashed";
 
 export const VIZ_MODES: { id: VizMode; label: string }[] = [
   { id: "rings", label: "RINGS" },
@@ -20,6 +20,7 @@ export const VIZ_MODES: { id: VizMode; label: string }[] = [
   { id: "spikes", label: "SPIKES" },
   { id: "fireflies", label: "FLIES" },
   { id: "rush", label: "RUSH" },
+  { id: "slashed", label: "SLASHED" },
 ];
 
 export function pickRandomVizMode(exclude?: VizMode): VizMode {
@@ -587,6 +588,22 @@ export function AudioVisualizer({
   });
   const [mode, setMode] = useState<VizMode>("rings");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (mode === "slashed") {
+      video.muted = true;
+      video.defaultMuted = true;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {});
+      }
+    } else {
+      video.pause();
+    }
+  }, [mode]);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -676,7 +693,9 @@ export function AudioVisualizer({
       const currentMode = modeRef.current;
       const t = (performance.now() - startedAt) / 1000;
 
-      if (currentMode === "fireflies") {
+      if (currentMode === "slashed") {
+        ctx.clearRect(0, 0, w, h);
+      } else if (currentMode === "fireflies") {
         ctx.fillStyle = "rgba(0, 0, 0, 0.045)";
         ctx.fillRect(0, 0, w, h);
       } else if (currentMode === "rush") {
@@ -690,7 +709,9 @@ export function AudioVisualizer({
       hueRef.current = (hueRef.current + 0.4) % 360;
       const hue = hueRef.current;
 
-      if (live) {
+      if (currentMode === "slashed") {
+        // Video element handles rendering
+      } else if (live) {
         if (currentMode === "wave") {
           live.analyser.getByteTimeDomainData(timeData);
         } else {
@@ -702,7 +723,9 @@ export function AudioVisualizer({
         fillIdleFreq(freqData, t);
       }
 
-      if (currentMode === "wave") {
+      if (currentMode === "slashed") {
+        // Handled by <video>
+      } else if (currentMode === "wave") {
         drawWave(ctx, timeData, w, h, hue);
       } else if (currentMode === "rush") {
         drawRush(ctx, freqData, w, h, rushRef.current);
@@ -732,11 +755,35 @@ export function AudioVisualizer({
       data-viz-mode={mode}
     >
       <canvas ref={canvasRef} className="visualizer-canvas" />
+      <video
+        ref={(el) => {
+          videoRef.current = el;
+          if (el) {
+            el.muted = true;
+            el.defaultMuted = true;
+          }
+        }}
+        className={`viz-video ${mode === "slashed" ? "viz-video--active" : "viz-video--hidden"}`}
+        src="/SLASHED.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        aria-label="Severed Head Sunday visualizer video"
+      />
       {!isPlayingContext && onIdlePlay ? (
         <button
           type="button"
           className="viz-idle-play"
-          onClick={onIdlePlay}
+          onClick={() => {
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              videoRef.current.defaultMuted = true;
+              void videoRef.current.play().catch(() => {});
+            }
+            onIdlePlay();
+          }}
           aria-label="Play"
         >
           <span className="viz-idle-play-btn" aria-hidden="true">

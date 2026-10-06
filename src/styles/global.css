@@ -288,6 +288,30 @@ body::after {
   filter: blur(10px) contrast(1.5);
 }
 
+.viz-frame--mode-slashed {
+  background: #000;
+}
+
+.viz-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.viz-video--hidden {
+  display: none;
+}
+
+.viz-video--active {
+  display: block;
+}
+
 .session-log {
   grid-area: sessions;
   width: 100%;
